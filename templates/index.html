@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>使用補償金計算機 (雲端版)</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px;}
+        input, select { width: 100%; padding: 8px; box-sizing: border-box;}
+        button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; cursor: pointer; margin-top: 10px;}
+        .price-box { background: #e9ecef; padding: 10px; margin-top: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>使用補償金計算機</h2>
+    
+    <div class="form-group">
+        <label>縣市與行政區</label>
+        <div style="display: flex; gap: 5px;">
+            <select id="city"><option value="新北市">新北市</option></select>
+            <select id="district"><option value="板橋區">板橋區</option></select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>段名 / 地號 (測試用: 文化段 / 05000000)</label>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="section" value="文化段" placeholder="段名">
+            <input type="text" id="landNumber" value="05000000" placeholder="地號8碼">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>期間迄 (例如 1150505)</label>
+        <input type="text" id="endDate" value="1150505">
+    </div>
+    
+    <button onclick="fetchPrices()" style="background: #007bff;">1. 帶入地價資料</button>
+
+    <div id="priceFields" class="price-box" style="display:none;">
+        <p>各奇數年公告地價 (自動從資料庫帶入，可修改)：</p>
+        <div id="dynamicInputs"></div>
+    </div>
+
+    <button onclick="calculate()" id="calcBtn" style="display:none;">2. 計算補償金</button>
+    <h3 id="result"></h3>
+</div>
+
+<script>
+    async function fetchPrices() {
+        const payload = {
+            city: document.getElementById('city').value,
+            district: document.getElementById('district').value,
+            section: document.getElementById('section').value,
+            landNumber: document.getElementById('landNumber').value,
+            endDate: document.getElementById('endDate').value,
+            startDate: ""
+        };
+
+        // 注意這裡：這是相對路徑，代表呼叫同一台伺服器的 API
+        const response = await fetch('/api/get_calc_data', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        const container = document.getElementById('dynamicInputs');
+        container.innerHTML = '';
+        
+        data.yearsData.forEach(item => {
+            container.innerHTML += `<div style="margin-bottom:5px;">
+                ${item.year}年: <input type="number" class="price-input" value="${item.price}" placeholder="請輸入地價">
+            </div>`;
+        });
+        
+        document.getElementById('priceFields').style.display = 'block';
+        document.getElementById('calcBtn').style.display = 'block';
+    }
+
+    function calculate() {
+        const inputs = document.querySelectorAll('.price-input');
+        let total = 0;
+        let count = 0;
+        inputs.forEach(input => {
+            if(input.value) {
+                total += parseFloat(input.value);
+                count++;
+            }
+        });
+        
+        if(count === 0) return alert('請確認地價已填寫');
+        
+        const avg = total / count;
+        // 費率 5%，算 5 年
+        const finalAmount = Math.round(avg * 0.05 * 5);
+        document.getElementById('result').innerText = `估算補償金：NT$ ${finalAmount}`;
+    }
+</script>
+
+</body>
+</html>
