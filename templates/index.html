@@ -67,7 +67,7 @@
         <div id="globalAlert" class="alert"></div>
 
         <div class="card">
-            <div class="card-title">📋 基本資料填寫</div>
+            <div class="card-title">📋 案件資料輸入</div>
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">縣市</label>
@@ -120,22 +120,23 @@
         </div>
 
         <div id="priceCard" class="card" style="display:none;">
-            <div class="card-title">💰 歷年地價確認</div>
+            <div class="card-title">💰 公告地價確認</div>
+            <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">註：偶數年計算時，將自動對應前一年度地價。</p>
             <table>
-                <thead><tr><th>年份</th><th style="text-align:right;">公告地價 (元)</th></tr></thead>
+                <thead><tr><th>公告地價年份</th><th style="text-align:right;">單價 (元)</th></tr></thead>
                 <tbody id="priceTableBody"></tbody>
             </table>
             <button onclick="calculateCompensation()" class="btn btn-secondary">2. 執行分段計算</button>
         </div>
 
         <div id="resultCard" class="card" style="display:none;">
-            <div class="card-title">✅ 計算明細</div>
+            <div class="card-title">✅ 計算明細表</div>
             <table id="detailTable">
-                <thead><tr><th>區間</th><th>天數</th><th style="text-align:right;">小計</th></tr></thead>
+                <thead><tr><th>年度區間</th><th>天數</th><th style="text-align:right;">小計</th></tr></thead>
                 <tbody id="detailTableBody"></tbody>
             </table>
             <div class="result-box">
-                <div style="font-size: 0.9rem; opacity: 0.9;">補償金總計 (無條件進位)</div>
+                <div style="font-size: 0.9rem; opacity: 0.9;">補償金總計 (已執行無條件進位)</div>
                 <div class="result-amount" id="finalTotal">NT$ 0</div>
             </div>
         </div>
@@ -149,7 +150,6 @@
 
         let yearsData = [];
 
-        // 初始化行政區
         function initDistricts() {
             const city = document.getElementById('city').value;
             const distSelect = document.getElementById('district');
@@ -162,15 +162,12 @@
             updateSections();
         }
 
-        // 動態抓取段名
         async function updateSections() {
             const city = document.getElementById('city').value;
             const district = document.getElementById('district').value;
             const secSelect = document.getElementById('section');
-            
             secSelect.innerHTML = '<option value="">載入中...</option>';
             secSelect.disabled = true;
-
             try {
                 const res = await fetch('/api/get_sections', {
                     method: 'POST',
@@ -185,16 +182,13 @@
                     secSelect.appendChild(opt);
                 });
                 secSelect.disabled = false;
-            } catch (e) {
-                secSelect.innerHTML = '<option value="">讀取失敗</option>';
-            }
+            } catch (e) { secSelect.innerHTML = '<option value="">讀取失敗</option>'; }
         }
 
         document.getElementById('city').onchange = initDistricts;
         document.getElementById('district').onchange = updateSections;
         window.onload = initDistricts;
 
-        // 自動補零工具
         [document.getElementById('landMain'), document.getElementById('landSub')].forEach(el => {
             el.onblur = () => { if(el.value) el.value = el.value.padStart(4, '0'); };
         });
@@ -206,18 +200,14 @@
             setTimeout(() => el.classList.remove('show'), 5000);
         }
 
-        // 1. 抓取地價
         async function fetchPrices() {
             const main = document.getElementById('landMain').value;
             const sub = document.getElementById('landSub').value || '0000';
             const endDate = document.getElementById('endDate').value;
             const section = document.getElementById('section').value;
-
-            if(!main || !endDate || !section) return showMsg("請填寫完整資訊並選擇地段");
-
+            if(!main || !endDate || !section) return showMsg("請填寫地號與日期並選擇地段");
             const btn = document.getElementById('fetchBtn');
             btn.disabled = true; btn.innerText = "讀取中...";
-
             try {
                 const res = await fetch('/api/get_calc_data', {
                     method: 'POST',
@@ -233,28 +223,25 @@
                 });
                 const data = await res.json();
                 if(data.error) throw new Error(data.error);
-
                 yearsData = data.yearsData;
                 const tbody = document.getElementById('priceTableBody');
                 tbody.innerHTML = '';
                 [...yearsData].reverse().forEach(item => {
                     tbody.innerHTML += `<tr><td>${item.year}年</td>
                         <td><input type="number" class="price-input" value="${item.price}" data-year="${item.year}" 
-                        style="width:100px; text-align:right; padding:4px;"></td></tr>`;
+                        style="width:120px; text-align:right; padding:4px; border:1px solid #ddd; border-radius:4px;"></td></tr>`;
                 });
                 document.getElementById('priceCard').style.display = 'block';
-                showMsg("讀取成功！可於下方微調地價後計算", false);
-            } catch (e) {
-                showMsg(e.message);
-            } finally {
-                btn.disabled = false; btn.innerText = "1. 讀取公告地價";
-            }
+                showMsg("公告地價已帶入", false);
+            } catch (e) { showMsg(e.message); } finally { btn.disabled = false; btn.innerText = "1. 讀取公告地價"; }
         }
 
-        // 2. 執行計算
+        /**
+         * 執行計算邏輯
+         */
         function calculateCompensation() {
             try {
-                // 更新地價數據
+                // 更新手動調整的地價
                 document.querySelectorAll('.price-input').forEach(input => {
                     const y = parseInt(input.dataset.year);
                     const p = parseFloat(input.value) || 0;
@@ -268,15 +255,10 @@
 
                 const end = parseROC(endDateStr);
                 let start = parseROC(startDateStr);
-                
-                if(!start) {
-                    start = new Date(end);
-                    start.setFullYear(start.getFullYear() - 5);
-                }
-
+                if(!start) { start = new Date(end); start.setFullYear(start.getFullYear() - 5); }
                 if(start > end) throw new Error("起日不可大於迄日");
 
-                let total = 0;
+                let totalAccumulated = 0;
                 let tempStart = new Date(start);
                 const detailBody = document.getElementById('detailTableBody');
                 detailBody.innerHTML = '';
@@ -285,20 +267,23 @@
                     const currentYear = tempStart.getFullYear();
                     const yearEnd = new Date(currentYear, 11, 31);
                     const segEnd = yearEnd < end ? yearEnd : end;
-
                     const days = Math.floor((segEnd - tempStart) / (1000*60*60*24)) + 1;
+                    
                     const rocYear = currentYear - 1911;
                     
-                    // 智慧匹配地價 (找小於或等於當前年度的最新公告地價)
-                    const available = yearsData.filter(d => d.year <= rocYear);
-                    const price = available.length ? Math.max(...available.map(d => d.year)) : 0;
-                    const priceVal = (yearsData.find(d => d.year === price) || {price:0}).price;
+                    // --- 偶數年邏輯修正 ---
+                    // 如果是偶數年，抓前一年的資料 (rocYear - 1)
+                    let lookupYear = (rocYear % 2 === 0) ? (rocYear - 1) : rocYear;
+                    
+                    // 從資料中找對應年份的地價
+                    const priceData = yearsData.find(d => d.year === lookupYear) || {price: 0};
+                    const priceVal = priceData.price;
 
                     const subTotal = priceVal * rate * (days / 365);
-                    total += subTotal;
+                    totalAccumulated += subTotal;
 
                     detailBody.innerHTML += `<tr>
-                        <td>${rocYear}年 (${fmtDate(tempStart)}~${fmtDate(segEnd)})</td>
+                        <td>${rocYear}年 (${fmtDate(tempStart)}~${fmtDate(segEnd)}) <br/><small>適用${lookupYear}年地價</small></td>
                         <td class="number">${days}天</td>
                         <td class="number">${Math.ceil(subTotal).toLocaleString()}</td></tr>`;
 
@@ -306,13 +291,11 @@
                     tempStart.setDate(tempStart.getDate() + 1);
                 }
 
-                document.getElementById('finalTotal').innerText = `NT$ ${Math.ceil(total).toLocaleString()}`;
+                document.getElementById('finalTotal').innerText = `NT$ ${Math.ceil(totalAccumulated).toLocaleString()}`;
                 document.getElementById('resultCard').style.display = 'block';
                 document.getElementById('resultCard').scrollIntoView({behavior: 'smooth'});
 
-            } catch (e) {
-                showMsg(e.message);
-            }
+            } catch (e) { showMsg(e.message); }
         }
 
         function parseROC(s) {
