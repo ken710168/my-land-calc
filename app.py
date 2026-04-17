@@ -94,33 +94,31 @@ def index():
     return render_template('index.html')
 
 @app.route('/api/get_calc_data', methods=['POST'])
-def get_calc_data():
+# ==========================================
+# 新增功能：動態抓取該區所有的地段名稱
+# ==========================================
+@app.route('/api/get_sections', methods=['POST'])
+def get_sections():
     data = request.json
-    end_str = data.get('endDate')
-    start_str = data.get('startDate')
+    city = data.get('city')
+    dist = data.get('district')
 
-    if not end_str:
-        return jsonify({"error": "請輸入迄日"}), 400
+    if not os.path.exists(DB_PATH):
+        return jsonify({"sections": []})
 
-    end_date = parse_roc_date(end_str)
-    start_date = parse_roc_date(start_str) if start_str else (end_date - timedelta(days=5*365))
-
-    start_year_roc = start_date.year - 1911
-    end_year_roc = end_date.year - 1911
+    # 去資料庫把該行政區「不重複」的地段全部抓出來，並按照筆畫排序
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT DISTINCT section FROM prices 
+        WHERE city=? AND district=? AND section != '' 
+        ORDER BY section
+    """, (city, dist))
     
-    years_data = []
-    for y in range(start_year_roc, end_year_roc + 1):
-        if y % 2 != 0:
-            price = query_price(
-                data['city'], 
-                data['district'], 
-                data['section'], 
-                data['landNumber'], 
-                y
-            )
-            years_data.append({"year": y, "price": price})
-            
-    return jsonify({"yearsData": years_data})
-
+    sections = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    
+    return jsonify({"sections": sections})
+    
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
