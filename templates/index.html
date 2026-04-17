@@ -7,44 +7,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Noto Sans TC', sans-serif;
-            background: linear-gradient(135deg, #f0f4f8 0%, #e8f0f8 100%);
-            color: #1a202c;
-            min-height: 100vh;
-            padding: 2rem 1rem;
-        }
+        body { font-family: 'Noto Sans TC', sans-serif; background: linear-gradient(135deg, #f0f4f8 0%, #e8f0f8 100%); color: #1a202c; min-height: 100vh; padding: 2rem 1rem; }
         .container { max-width: 800px; margin: 0 auto; }
         .header { text-align: center; margin-bottom: 2rem; }
         .header h1 { font-size: 2rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; }
-        .card {
-            backdrop-filter: blur(12px);
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-            padding: 2rem;
-            margin-bottom: 1.5rem;
-        }
+        .card { backdrop-filter: blur(12px); background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 1rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); padding: 2rem; margin-bottom: 1.5rem; }
         .card-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
         .form-group { margin-bottom: 1.2rem; }
         .form-label { display: block; font-size: 0.875rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; }
-        .form-input, .form-select {
-            width: 100%; padding: 0.75rem; font-size: 1rem; border: 1px solid #cbd5e1;
-            border-radius: 0.5rem; background: #fff; transition: all 0.2s;
-        }
+        .form-input, .form-select { width: 100%; padding: 0.75rem; font-size: 1rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; background: #fff; transition: all 0.2s; }
         .form-input:focus, .form-select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .land-number-group { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.5rem; align-items: center; }
         .hint { font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem; font-weight: 500; }
-        .btn {
-            padding: 0.8rem; font-size: 1rem; font-weight: 700; border: none; border-radius: 0.5rem;
-            cursor: pointer; transition: 0.2s; width: 100%;
-        }
+        .btn { padding: 0.8rem; font-size: 1rem; font-weight: 700; border: none; border-radius: 0.5rem; cursor: pointer; transition: 0.2s; width: 100%; }
         .btn-primary { background: #2563eb; color: white; }
-        .btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+        .btn-primary:hover:not(:disabled) { background: #1d4ed8; transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
         .btn-secondary { background: #10b981; color: white; margin-top: 1rem; }
-        .btn-secondary:hover { background: #059669; }
+        .btn-secondary:hover:not(:disabled) { background: #059669; }
         .alert { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 500; display: none; }
         .alert-error { background: #fef2f2; border: 1px solid #fee2e2; color: #991b1b; }
         .alert-success { background: #f0fdf4; border: 1px solid #dcfce7; color: #166534; }
@@ -54,7 +35,6 @@
         .number { font-family: 'JetBrains Mono', monospace; text-align: right; }
         .result-box { background: #10b981; color: white; padding: 1.5rem; border-radius: 0.75rem; text-align: center; margin-top: 1.5rem; }
         .result-amount { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 800; }
-        .show { display: block !important; }
         @media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -102,12 +82,12 @@
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">起日 (選填)</label>
-                    <input type="text" id="startDate" class="form-input" placeholder="1100101">
-                    <div class="hint">未填則回推5年</div>
+                    <input type="text" id="startDate" class="form-input" placeholder="例如: 1100101">
+                    <div class="hint">未填則由迄日回推5年</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">迄日 (必填)</label>
-                    <input type="text" id="endDate" class="form-input" placeholder="1150101">
+                    <input type="text" id="endDate" class="form-input" placeholder="例如: 1150101">
                 </div>
             </div>
 
@@ -121,7 +101,7 @@
 
         <div id="priceCard" class="card" style="display:none;">
             <div class="card-title">💰 公告地價確認</div>
-            <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">註：偶數年計算時，將自動對應前一年度地價。</p>
+            <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">註：偶數年計算時，系統將自動套用前一年度地價。</p>
             <table>
                 <thead><tr><th>公告地價年份</th><th style="text-align:right;">單價 (元)</th></tr></thead>
                 <tbody id="priceTableBody"></tbody>
@@ -150,6 +130,7 @@
 
         let yearsData = [];
 
+        // 初始化與連動
         function initDistricts() {
             const city = document.getElementById('city').value;
             const distSelect = document.getElementById('district');
@@ -162,65 +143,44 @@
             updateSections();
         }
 
-        async function fetchPrices() {
-            const main = document.getElementById('landMain').value;
-            const sub = document.getElementById('landSub').value || '0000';
-            const endDate = document.getElementById('endDate').value;
-            const section = document.getElementById('section').value;
+        async function updateSections() {
+            const city = document.getElementById('city').value;
+            const district = document.getElementById('district').value;
+            let secSelect = document.getElementById('section');
             
-            if(!main || !endDate || !section) return showMsg("請填寫地號與日期並選擇地段");
-            const btn = document.getElementById('fetchBtn');
-            btn.disabled = true; btn.innerText = "讀取中...";
-            
+            // 如果變成輸入框了，變回下拉選單
+            if (secSelect.tagName === 'INPUT') {
+                const newSelect = document.createElement('select');
+                newSelect.id = 'section'; newSelect.className = 'form-select';
+                secSelect.parentNode.replaceChild(newSelect, secSelect);
+                secSelect = newSelect;
+            }
+
+            secSelect.innerHTML = '<option value="">載入中...</option>';
+            secSelect.disabled = true;
+
             try {
-                const res = await fetch('/api/get_calc_data', {
+                const res = await fetch('/api/get_sections', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        city: document.getElementById('city').value,
-                        district: document.getElementById('district').value,
-                        section: section,
-                        landNumber: main + sub,
-                        endDate: endDate,
-                        startDate: document.getElementById('startDate').value
-                    })
+                    body: JSON.stringify({ city, district })
                 });
-
-                // 1. 如果伺服器發生大當機 (例如 500 錯誤)，直接攔截
-                if (!res.ok) {
-                    throw new Error(`伺服器異常 (代碼: ${res.status})，請檢查 Render Logs`);
-                }
-
+                if (!res.ok) throw new Error('後端無回應');
                 const data = await res.json();
                 
-                // 2. 照妖鏡：把後端傳來的東西印在 Console 裡面
-                console.log("後端回傳的原始資料：", data);
-
-                if(data.error) throw new Error(data.error);
-                
-                // 3. 終極防呆：如果 yearsData 是空的或不存在，強制給它一個空陣列 []，避免 not iterable 崩潰
-                yearsData = data.yearsData || [];
-                
-                if (yearsData.length === 0) {
-                    showMsg("資料庫中查無此地號的地價，請確認輸入是否正確，或自行在下方新增。");
+                secSelect.innerHTML = '<option value="">請選擇地段</option>';
+                if(data.sections && data.sections.length > 0) {
+                    data.sections.forEach(s => {
+                        const opt = document.createElement('option');
+                        opt.value = s; opt.innerText = s;
+                        secSelect.appendChild(opt);
+                    });
                 } else {
-                    showMsg("公告地價已帶入", false);
+                    secSelect.innerHTML = '<option value="">此區查無地段</option>';
                 }
-
-                const tbody = document.getElementById('priceTableBody');
-                tbody.innerHTML = '';
-                [...yearsData].reverse().forEach(item => {
-                    tbody.innerHTML += `<tr><td>${item.year}年</td>
-                        <td><input type="number" class="price-input" value="${item.price}" data-year="${item.year}" 
-                        style="width:120px; text-align:right; padding:4px; border:1px solid #ddd; border-radius:4px;"></td></tr>`;
-                });
-                document.getElementById('priceCard').style.display = 'block';
-                
+                secSelect.disabled = false;
             } catch (e) { 
-                showMsg(e.message); 
-                console.error(e); // 在 Console 印出詳細錯誤
-            } finally { 
-                btn.disabled = false; btn.innerText = "1. 讀取公告地價"; 
+                secSelect.outerHTML = `<input type="text" id="section" class="form-input" placeholder="連線異常，請手動輸入 (例如: 文化段)" required />`;
             }
         }
 
@@ -229,24 +189,33 @@
         window.onload = initDistricts;
 
         [document.getElementById('landMain'), document.getElementById('landSub')].forEach(el => {
-            el.onblur = () => { if(el.value) el.value = el.value.padStart(4, '0'); };
+            el.onblur = () => { if(el.value.trim()) el.value = el.value.trim().padStart(4, '0'); };
         });
 
         function showMsg(msg, isError = true) {
             const el = document.getElementById('globalAlert');
             el.innerText = msg;
-            el.className = `alert ${isError ? 'alert-error' : 'alert-success'} show`;
-            setTimeout(() => el.classList.remove('show'), 5000);
+            el.style.display = 'block';
+            el.className = `alert ${isError ? 'alert-error' : 'alert-success'}`;
+            setTimeout(() => el.style.display = 'none', 6000);
         }
 
+        // 1. 抓取地價
         async function fetchPrices() {
-            const main = document.getElementById('landMain').value;
-            const sub = document.getElementById('landSub').value || '0000';
-            const endDate = document.getElementById('endDate').value;
-            const section = document.getElementById('section').value;
-            if(!main || !endDate || !section) return showMsg("請填寫地號與日期並選擇地段");
+            // UI 重置：隱藏舊的計算結果
+            document.getElementById('resultCard').style.display = 'none';
+
+            const main = document.getElementById('landMain').value.trim();
+            const sub = document.getElementById('landSub').value.trim() || '0000';
+            const endDate = document.getElementById('endDate').value.trim();
+            const section = document.getElementById('section').value.trim();
+
+            if(!main || !endDate || !section) return showMsg("請填寫地號與迄日，並選擇地段");
+            if(endDate.length < 6 || endDate.length > 7) return showMsg("迄日格式錯誤 (應為 6~7 碼)");
+
             const btn = document.getElementById('fetchBtn');
             btn.disabled = true; btn.innerText = "讀取中...";
+
             try {
                 const res = await fetch('/api/get_calc_data', {
                     method: 'POST',
@@ -255,32 +224,41 @@
                         city: document.getElementById('city').value,
                         district: document.getElementById('district').value,
                         section: section,
-                        landNumber: main + sub,
-                        endDate: endDate,
-                        startDate: document.getElementById('startDate').value
+                        landNumber: main.padStart(4, '0') + sub.padStart(4, '0'),
+                        endDate: endDate
                     })
                 });
+                
+                if (!res.ok) throw new Error(`伺服器異常 (代碼: ${res.status})`);
                 const data = await res.json();
                 if(data.error) throw new Error(data.error);
-                yearsData = data.yearsData;
+
+                yearsData = data.yearsData || [];
+                
                 const tbody = document.getElementById('priceTableBody');
                 tbody.innerHTML = '';
-                [...yearsData].reverse().forEach(item => {
+                
+                if (yearsData.length === 0) {
+                    showMsg("查無地價資料，請確認輸入是否正確，或自行在下方新增。");
+                    // 沒資料時，預設塞一個空白列讓使用者填寫
+                    yearsData.push({year: new Date().getFullYear()-1911, price: 0}); 
+                } else {
+                    showMsg("公告地價已成功帶入", false);
+                }
+
+                [...yearsData].forEach(item => {
                     tbody.innerHTML += `<tr><td>${item.year}年</td>
                         <td><input type="number" class="price-input" value="${item.price}" data-year="${item.year}" 
-                        style="width:120px; text-align:right; padding:4px; border:1px solid #ddd; border-radius:4px;"></td></tr>`;
+                        style="width:120px; text-align:right; padding:6px; border:1px solid #cbd5e1; border-radius:4px;"></td></tr>`;
                 });
                 document.getElementById('priceCard').style.display = 'block';
-                showMsg("公告地價已帶入", false);
+
             } catch (e) { showMsg(e.message); } finally { btn.disabled = false; btn.innerText = "1. 讀取公告地價"; }
         }
 
-        /**
-         * 執行計算邏輯
-         */
+        // 2. 執行計算
         function calculateCompensation() {
             try {
-                // 更新手動調整的地價
                 document.querySelectorAll('.price-input').forEach(input => {
                     const y = parseInt(input.dataset.year);
                     const p = parseFloat(input.value) || 0;
@@ -289,12 +267,20 @@
                 });
 
                 const rate = parseFloat(document.getElementById('feeRate').value) / 100;
-                const endDateStr = document.getElementById('endDate').value;
-                let startDateStr = document.getElementById('startDate').value;
+                if(isNaN(rate)) throw new Error("費率必須為數字");
+
+                const endDateStr = document.getElementById('endDate').value.trim();
+                let startDateStr = document.getElementById('startDate').value.trim();
 
                 const end = parseROC(endDateStr);
+                if(!end) throw new Error("迄日格式錯誤");
+
                 let start = parseROC(startDateStr);
-                if(!start) { start = new Date(end); start.setFullYear(start.getFullYear() - 5); }
+                if(!start) { 
+                    start = new Date(end); 
+                    start.setFullYear(start.getFullYear() - 5); 
+                }
+                
                 if(start > end) throw new Error("起日不可大於迄日");
 
                 let totalAccumulated = 0;
@@ -307,46 +293,49 @@
                     const yearEnd = new Date(currentYear, 11, 31);
                     const segEnd = yearEnd < end ? yearEnd : end;
                     const days = Math.floor((segEnd - tempStart) / (1000*60*60*24)) + 1;
-                    
                     const rocYear = currentYear - 1911;
                     
-                    // --- 偶數年邏輯修正 ---
-                    // 如果是偶數年，抓前一年的資料 (rocYear - 1)
+                    // 偶數年自動減一找奇數年地價
                     let lookupYear = (rocYear % 2 === 0) ? (rocYear - 1) : rocYear;
                     
-                    // 從資料中找對應年份的地價
-                    const priceData = yearsData.find(d => d.year === lookupYear) || {price: 0};
-                    const priceVal = priceData.price;
+                    // 防呆：找小於或等於查找年份的資料
+                    const available = yearsData.filter(d => d.year <= lookupYear);
+                    const finalYear = available.length ? Math.max(...available.map(d => d.year)) : lookupYear;
+                    const priceVal = (yearsData.find(d => d.year === finalYear) || {price:0}).price;
 
                     const subTotal = priceVal * rate * (days / 365);
-                    totalAccumulated += subTotal;
+                    const subTotalCeil = Math.ceil(subTotal);
+                    totalAccumulated += subTotalCeil; // 把進位後的數字加進總數
 
                     detailBody.innerHTML += `<tr>
-                        <td>${rocYear}年 (${fmtDate(tempStart)}~${fmtDate(segEnd)}) <br/><small>適用${lookupYear}年地價</small></td>
+                        <td>${rocYear}年 (${fmtDate(tempStart)}~${fmtDate(segEnd)}) <br/><small style="color:#64748b;">適用${finalYear}年單價</small></td>
                         <td class="number">${days}天</td>
-                        <td class="number">${Math.ceil(subTotal).toLocaleString()}</td></tr>`;
+                        <td class="number">NT$ ${subTotalCeil.toLocaleString()}</td></tr>`;
 
                     tempStart = new Date(segEnd);
                     tempStart.setDate(tempStart.getDate() + 1);
                 }
 
-                document.getElementById('finalTotal').innerText = `NT$ ${Math.ceil(totalAccumulated).toLocaleString()}`;
+                document.getElementById('finalTotal').innerText = `NT$ ${totalAccumulated.toLocaleString()}`;
                 document.getElementById('resultCard').style.display = 'block';
                 document.getElementById('resultCard').scrollIntoView({behavior: 'smooth'});
 
             } catch (e) { showMsg(e.message); }
         }
 
+        // 升級版日期解析 (支援6碼與7碼)
         function parseROC(s) {
-            if(!s || s.length < 7) return null;
-            const y = parseInt(s.substring(0, 3)) + 1911;
-            const m = parseInt(s.substring(3, 5)) - 1;
-            const d = parseInt(s.substring(5, 7));
+            s = s.trim();
+            if(!s || s.length < 6 || s.length > 7) return null;
+            const yLen = s.length === 7 ? 3 : 2;
+            const y = parseInt(s.substring(0, yLen)) + 1911;
+            const m = parseInt(s.substring(yLen, yLen + 2)) - 1;
+            const d = parseInt(s.substring(yLen + 2));
             return new Date(y, m, d);
         }
 
         function fmtDate(d) {
-            return `${d.getMonth()+1}/${d.getDate()}`;
+            return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
         }
     </script>
 </body>
