@@ -3,9 +3,27 @@ from datetime import datetime, timedelta
 import sqlite3
 import os
 import re
+import zipfile  # 👉 新增了這個內建的解壓縮工具
 
 app = Flask(__name__)
-DB_PATH = "land_data.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "land_data.db")
+ZIP_PATH = os.path.join(BASE_DIR, "land_data.zip")
+
+# ==========================================
+# 🚀 雲端自動解壓縮機制
+# ==========================================
+def auto_unzip_db():
+    # 如果資料庫不存在，但是發現了 ZIP 檔，就自動解壓縮！
+    if not os.path.exists(DB_PATH) and os.path.exists(ZIP_PATH):
+        print("📦 發現壓縮的資料庫，正在自動解壓縮...")
+        with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
+            # 將檔案解壓縮到當前目錄
+            zip_ref.extractall(BASE_DIR)
+        print("✅ 解壓縮完成！準備啟動伺服器。")
+
+# 在 Flask 啟動前，強制執行一次檢查
+auto_unzip_db()
 
 # ==========================================
 # 工具：解析使用者輸入的段名與小段
@@ -45,7 +63,7 @@ def parse_roc_date(date_str):
 # ==========================================
 def query_price(city, dist, raw_section_input, raw_land_input, year):
     if not os.path.exists(DB_PATH):
-        print("⚠️ 找不到資料庫！請先執行 data_builder.py 轉檔。")
+        print("⚠️ 找不到資料庫！")
         return ""
 
     q_sec, q_subsec = parse_segment(raw_section_input)
@@ -103,5 +121,4 @@ def get_calc_data():
     return jsonify({"yearsData": years_data})
 
 if __name__ == '__main__':
-    # 使用 CMD 執行時，debug=True 可以方便除錯
     app.run(debug=True, use_reloader=False)
