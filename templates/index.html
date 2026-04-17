@@ -21,12 +21,12 @@
     <div class="form-group">
         <label>縣市與行政區</label>
         <div style="display: flex; gap: 5px;">
-            <select id="city"><option value="新北市">新北市</option></select>
-            <select id="district">
-                <option value="淡水區">淡水區</option>
-                <option value="瑞芳區">瑞芳區</option>
-                <option value="貢寮區">貢寮區</option>
+            <select id="city" onchange="updateDistricts()">
+                <option value="新北市">新北市</option>
+                <option value="基隆市">基隆市</option>
             </select>
+            <select id="district">
+                </select>
         </div>
     </div>
 
@@ -55,8 +55,35 @@
 </div>
 
 <script>
+    // ==========================================
+    // 1. 縣市與行政區連動邏輯
+    // ==========================================
+    const districtMap = {
+        "新北市": ["淡水區", "三芝區", "石門區", "金山區", "萬里區", "瑞芳區", "平溪區", "雙溪區", "貢寮區"],
+        "基隆市": ["七堵區"]
+    };
+
+    function updateDistricts() {
+        const city = document.getElementById('city').value;
+        const districtSelect = document.getElementById('district');
+        
+        // 清空現有的選項
+        districtSelect.innerHTML = '';
+        
+        // 根據選擇的縣市，把對應的行政區塞進去
+        districtMap[city].forEach(d => {
+            districtSelect.innerHTML += `<option value="${d}">${d}</option>`;
+        });
+    }
+
+    // 當網頁一打開時，先執行一次，讓預設的新北市行政區跑出來
+    window.onload = updateDistricts;
+
+
+    // ==========================================
+    // 2. 抓取資料與計算邏輯 (維持不變)
+    // ==========================================
     async function fetchPrices() {
-        // 按下按鈕時先改變文字，讓使用者知道程式有在動
         const fetchBtn = document.getElementById('fetchBtn');
         fetchBtn.innerText = "讀取中...";
         fetchBtn.disabled = true;
@@ -71,21 +98,18 @@
         };
 
         try {
-            // 正確的相對路徑呼叫
             const response = await fetch('/api/get_calc_data', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             });
             
-            // 檢查伺服器有沒有大當機
             if (!response.ok) {
                 throw new Error(`伺服器錯誤代碼: ${response.status}`);
             }
 
             const data = await response.json();
             
-            // 如果後端回傳自訂錯誤 (例如沒填日期)
             if (data.error) {
                 alert(data.error);
                 return;
@@ -97,7 +121,6 @@
             let hasAnyPrice = false;
 
             data.yearsData.forEach(item => {
-                // 如果有找到價格，做個標記
                 if(item.price !== "") hasAnyPrice = true;
                 
                 container.innerHTML += `<div style="margin-bottom:5px;">
@@ -115,7 +138,6 @@
         } catch (error) {
             alert("連線發生錯誤，請稍後再試或檢查 Logs。\n詳細原因: " + error.message);
         } finally {
-            // 執行完畢把按鈕恢復原狀
             fetchBtn.innerText = "1. 帶入地價資料";
             fetchBtn.disabled = false;
         }
@@ -135,7 +157,6 @@
         if(count === 0) return alert('請確認地價已填寫');
         
         const avg = total / count;
-        // 費率 5%，算 5 年
         const finalAmount = Math.round(avg * 0.05 * 5);
         document.getElementById('result').innerText = `估算補償金：NT$ ${finalAmount}`;
     }
