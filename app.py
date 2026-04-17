@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 from datetime import datetime, timedelta
 import sqlite3
 import os
@@ -6,6 +7,7 @@ import re
 import zipfile  # 👉 新增了這個內建的解壓縮工具
 
 app = Flask(__name__)
+CORS(app)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "land_data.db")
 ZIP_PATH = os.path.join(BASE_DIR, "land_data.zip")
