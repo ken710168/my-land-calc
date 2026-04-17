@@ -5,16 +5,16 @@ import os
 import zipfile
 
 app = Flask(__name__)
-# 允許跨網域請求，確保 API 連線順暢
+# 允許跨網域請求
 CORS(app)  
 
-# 設定路徑
+# 設定絕對路徑，確保雲端執行不迷路
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "land_data.db")
 ZIP_PATH = os.path.join(BASE_DIR, "land_data.zip")
 
 # ==========================================
-# 🚀 雲端自動解壓縮機制
+# 雲端自動解壓縮機制
 # ==========================================
 def auto_unzip_db():
     if not os.path.exists(DB_PATH) and os.path.exists(ZIP_PATH):
@@ -26,7 +26,6 @@ def auto_unzip_db():
         except Exception as e:
             print(f"❌ 解壓縮失敗: {e}")
 
-# 在 Flask 啟動前，強制執行一次檢查
 auto_unzip_db()
 
 # ==========================================
@@ -49,17 +48,16 @@ def get_sections():
         return jsonify({"sections": []})
 
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        # 撈出該區不重複的地段名稱，並排序
-        cursor.execute("""
-            SELECT DISTINCT section FROM prices 
-            WHERE city=? AND district=? AND section != '' AND section IS NOT NULL
-            ORDER BY section
-        """, (city, dist))
-        
-        sections = [row[0] for row in cursor.fetchall()]
-        conn.close()
+        # 使用 with 確保資料庫連線安全關閉
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT DISTINCT section FROM prices 
+                WHERE city=? AND district=? AND section != '' AND section IS NOT NULL
+                ORDER BY section
+            """, (city, dist))
+            sections = [row[0] for row in cursor.fetchall()]
+            
         return jsonify({"sections": sections})
     except Exception as e:
         print("獲取地段失敗:", e)
@@ -74,14 +72,13 @@ def get_calc_data():
     city = data.get('city')
     dist = data.get('district')
     section = data.get('section')
-    land_number = data.get('landNumber') # 組合好的 8 碼
+    land_number = data.get('landNumber')
 
-    # 基礎參數防呆
     if not all([city, dist, section, land_number]):
-        return jsonify({"error": "缺少必要查詢參數"}), 400
+        return jsonify({"error": "缺少必要查詢參數 (縣市/行政區/地段/地號)"}), 400
 
     if not os.path.exists(DB_PATH):
-        return jsonify({"error": "伺服器找不到資料庫檔案 (land_data.db)"}), 500
+        return jsonify({"error": "伺服器資料庫維護中，找不到檔案 (land_data.db)"}), 500
 
     try:
         # 切割地號 (前4母號，後4子號)
@@ -89,26 +86,16 @@ def get_calc_data():
         q_main = clean_land[:4]
         q_sub = clean_land[4:]
 
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # 核心優化：不再篩選年份，直接把這塊地「所有」的地價撈出來，照年份排好
-        cursor.execute("""
-            SELECT year, price FROM prices 
-            WHERE city=? AND district=? AND section=? AND land_main=? AND land_sub=?
-            ORDER BY year DESC
-        """, (city, dist, section, q_main, q_sub))
-        
-        rows = cursor.fetchall()
-        conn.close()
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT year, price FROM prices 
+                WHERE city=? AND district=? AND section=? AND land_main=? AND land_sub=?
+                ORDER BY year DESC
+            """, (city, dist, section, q_main, q_sub))
+            rows = cursor.fetchall()
 
-        # 整理成前端要的 JSON 格式
-        years_data = []
-        for row in rows:
-            years_data.append({
-                "year": int(row[0]),
-                "price": float(row[1]) if row[1] else 0
-            })
+        years_data = [{"year": int(row[0]), "price": float(row[1]) if row[1] else 0} for row in rows]
 
         return jsonify({"yearsData": years_data})
 
@@ -116,9 +103,5 @@ def get_calc_data():
         print("查詢地價失敗:", e)
         return jsonify({"error": f"資料庫查詢錯誤: {str(e)}"}), 500
 
-# ==========================================
-# 啟動伺服器
-# ==========================================
 if __name__ == '__main__':
-    # 關閉 reloader 避免在雲端重複執行解壓縮
     app.run(debug=True, use_reloader=False)
