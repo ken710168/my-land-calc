@@ -1,20 +1,38 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Apr 16 19:44:54 2026
-
-@author: fkk
-"""
-
 from flask import Flask, render_template, request, jsonify
 from datetime import datetime, timedelta
 import sqlite3
 import os
+import re
 
 app = Flask(__name__)
+DB_PATH = "land_data.db"
 
-# 確保在 Render 雲端環境也能正確找到資料庫路徑
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "land_data.db")
+# ==========================================
+# 工具：解析使用者輸入的段名與小段
+# ==========================================
+def parse_segment(text):
+    text = str(text).strip()
+    if not text:
+        return "", ""
+
+    sec_name = ""
+    subsec_name = ""
+    text = re.sub(r'^[A-Za-z0-9_-]+', '', text).strip()
+
+    if '段' in text:
+        parts = text.split('段', 1)
+        sec_name = parts[0] + '段'
+        subsec_name = parts[1].strip()
+    else:
+        sec_name = text
+
+    if subsec_name:
+        subsec_name = re.sub(r'^[A-Za-z0-9_-]+', '', subsec_name).strip()
+        if subsec_name and not subsec_name.endswith('小段'):
+            if subsec_name.endswith('小'): subsec_name += '段'
+            elif subsec_name != "": subsec_name += '小段'
+
+    return sec_name, subsec_name
 
 def parse_roc_date(date_str):
     year = int(date_str[:-4]) + 1911
@@ -22,23 +40,39 @@ def parse_roc_date(date_str):
     day = int(date_str[-2:])
     return datetime(year, month, day)
 
-def query_price(city, dist, section, land_num, year):
+# ==========================================
+# 資料庫查詢邏輯
+# ==========================================
+def query_price(city, dist, raw_section_input, raw_land_input, year):
+    if not os.path.exists(DB_PATH):
+        print("⚠️ 找不到資料庫！請先執行 data_builder.py 轉檔。")
+        return ""
+
+    q_sec, q_subsec = parse_segment(raw_section_input)
+
+    clean_land = str(raw_land_input).replace('-', '').replace(' ', '').zfill(8)
+    q_main = clean_land[:4]
+    q_sub = clean_land[4:]
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
         SELECT price FROM prices 
-        WHERE city=? AND district=? AND section=? AND land_number=? AND year=?
-    """, (city, dist, section, land_num, year))
+        WHERE city=? AND district=? AND section=? AND sub_section=? AND land_main=? AND land_sub=? AND year=?
+    """, (city, dist, q_sec, q_subsec, q_main, q_sub, str(year)))
+    
     result = cursor.fetchone()
     conn.close()
-    return result[0] if result else "" # 查不到就回傳空白，讓使用者手動填
+    
+    return result[0] if result else ""
 
-# 1. 負責把網頁呈現給使用者
+# ==========================================
+# 網頁路由
+# ==========================================
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# 2. 負責接收前端資料並回傳地價
 @app.route('/api/get_calc_data', methods=['POST'])
 def get_calc_data():
     data = request.json
@@ -54,14 +88,20 @@ def get_calc_data():
     start_year_roc = start_date.year - 1911
     end_year_roc = end_date.year - 1911
     
-    # 找出奇數年並去資料庫查價錢
     years_data = []
     for y in range(start_year_roc, end_year_roc + 1):
         if y % 2 != 0:
-            price = query_price(data['city'], data['district'], data['section'], data['landNumber'], y)
+            price = query_price(
+                data['city'], 
+                data['district'], 
+                data['section'], 
+                data['landNumber'], 
+                y
+            )
             years_data.append({"year": y, "price": price})
             
     return jsonify({"yearsData": years_data})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # 使用 CMD 執行時，debug=True 可以方便除錯
+    app.run(debug=True, use_reloader=False)
