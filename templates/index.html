@@ -162,27 +162,66 @@
             updateSections();
         }
 
-        async function updateSections() {
-            const city = document.getElementById('city').value;
-            const district = document.getElementById('district').value;
-            const secSelect = document.getElementById('section');
-            secSelect.innerHTML = '<option value="">載入中...</option>';
-            secSelect.disabled = true;
+        async function fetchPrices() {
+            const main = document.getElementById('landMain').value;
+            const sub = document.getElementById('landSub').value || '0000';
+            const endDate = document.getElementById('endDate').value;
+            const section = document.getElementById('section').value;
+            
+            if(!main || !endDate || !section) return showMsg("請填寫地號與日期並選擇地段");
+            const btn = document.getElementById('fetchBtn');
+            btn.disabled = true; btn.innerText = "讀取中...";
+            
             try {
-                const res = await fetch('/api/get_sections', {
+                const res = await fetch('/api/get_calc_data', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ city, district })
+                    body: JSON.stringify({
+                        city: document.getElementById('city').value,
+                        district: document.getElementById('district').value,
+                        section: section,
+                        landNumber: main + sub,
+                        endDate: endDate,
+                        startDate: document.getElementById('startDate').value
+                    })
                 });
+
+                // 1. 如果伺服器發生大當機 (例如 500 錯誤)，直接攔截
+                if (!res.ok) {
+                    throw new Error(`伺服器異常 (代碼: ${res.status})，請檢查 Render Logs`);
+                }
+
                 const data = await res.json();
-                secSelect.innerHTML = '<option value="">請選擇地段</option>';
-                data.sections.forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s; opt.innerText = s;
-                    secSelect.appendChild(opt);
+                
+                // 2. 照妖鏡：把後端傳來的東西印在 Console 裡面
+                console.log("後端回傳的原始資料：", data);
+
+                if(data.error) throw new Error(data.error);
+                
+                // 3. 終極防呆：如果 yearsData 是空的或不存在，強制給它一個空陣列 []，避免 not iterable 崩潰
+                yearsData = data.yearsData || [];
+                
+                if (yearsData.length === 0) {
+                    showMsg("資料庫中查無此地號的地價，請確認輸入是否正確，或自行在下方新增。");
+                } else {
+                    showMsg("公告地價已帶入", false);
+                }
+
+                const tbody = document.getElementById('priceTableBody');
+                tbody.innerHTML = '';
+                [...yearsData].reverse().forEach(item => {
+                    tbody.innerHTML += `<tr><td>${item.year}年</td>
+                        <td><input type="number" class="price-input" value="${item.price}" data-year="${item.year}" 
+                        style="width:120px; text-align:right; padding:4px; border:1px solid #ddd; border-radius:4px;"></td></tr>`;
                 });
-                secSelect.disabled = false;
-            } catch (e) { secSelect.innerHTML = '<option value="">讀取失敗</option>'; }
+                document.getElementById('priceCard').style.display = 'block';
+                
+            } catch (e) { 
+                showMsg(e.message); 
+                console.error(e); // 在 Console 印出詳細錯誤
+            } finally { 
+                btn.disabled = false; btn.innerText = "1. 讀取公告地價"; 
+            }
         }
 
         document.getElementById('city').onchange = initDistricts;
