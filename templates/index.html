@@ -1,190 +1,858 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <title>使用補償金計算機 (智慧日算版)</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="description" content="使用補償金計算工具，支援新北市與基隆市，精確到日、無條件進位。" />
+    <title>土地使用補償金計算機</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <style>
-        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
-        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px;}
-        input, select { width: 100%; padding: 8px; box-sizing: border-box;}
-        button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; cursor: pointer; margin-top: 10px;}
-        .price-box { background: #e9ecef; padding: 10px; margin-top: 10px; border-radius: 5px; }
-        .result-box { background: #d1ecf1; color: #0c5460; padding: 15px; margin-top: 15px; border-radius: 5px; border: 1px solid #bee5eb; }
-        .hint { font-size: 12px; color: #666; font-weight: normal; margin-top: 2px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', system-ui, sans-serif;
+            background: linear-gradient(135deg, #f0f4f8 0%, #e8f0f8 100%);
+            color: #1a202c;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* 標題區 */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.03em;
+        }
+
+        .header p {
+            font-size: 1rem;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        /* Glassmorphism 卡片 */
+        .card {
+            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.75rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-subtitle {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+        }
+
+        /* 表單欄位 */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-label .required {
+            color: #ef4444;
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 1px solid rgba(203, 213, 225, 0.5);
+            border-radius: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.6);
+            transition: all 0.2s ease;
+            font-family: 'Noto Sans TC', system-ui, sans-serif;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* 行政區連動 */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 640px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 地號拆分 */
+        .land-number-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .land-number-hint {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 0.25rem;
+            font-weight: 500;
+        }
+
+        /* 按鈕 */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Noto Sans TC', system-ui, sans-serif;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* 載入狀態 */
+        .loading {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(37, 99, 235, 0.2);
+            border-top-color: #2563eb;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 錯誤訊息 */
+        .alert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .alert-error {
+            background-color: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #991b1b;
+        }
+
+        .alert-success {
+            background-color: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #065f46;
+        }
+
+        /* 地價選擇區 */
+        .price-selection {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .price-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border: 1px solid rgba(203, 213, 225, 0.5);
+            border-radius: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .price-item:hover {
+            background-color: rgba(255, 255, 255, 0.7);
+            border-color: #2563eb;
+        }
+
+        .price-item input[type="radio"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #cbd5e1;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .price-item input[type="radio"]:checked {
+            background-color: #2563eb;
+            border-color: #2563eb;
+            box-shadow: inset 0 0 0 3px white;
+        }
+
+        .price-label {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .price-year {
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .price-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2563eb;
+        }
+
+        .price-edit-input {
+            width: 150px;
+            padding: 0.5rem;
+            font-size: 0.875rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.375rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* 結果區 */
+        .result-section {
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-total {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .result-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.9;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        /* 計算明細 */
+        .calculation-details {
+            background-color: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(203, 213, 225, 0.5);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(203, 213, 225, 0.3);
+            font-size: 0.875rem;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            font-family: 'JetBrains Mono', monospace;
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        /* 年度明細表 */
+        .yearly-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .yearly-table thead {
+            background-color: rgba(37, 99, 235, 0.1);
+        }
+
+        .yearly-table th {
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: #0f172a;
+            border-bottom: 2px solid #2563eb;
+        }
+
+        .yearly-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(203, 213, 225, 0.3);
+        }
+
+        .yearly-table tr:hover {
+            background-color: rgba(37, 99, 235, 0.05);
+        }
+
+        .yearly-table .number {
+            font-family: 'JetBrains Mono', monospace;
+            text-align: right;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .result-amount {
+                font-size: 2rem;
+            }
+        }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <h2>使用補償金計算機</h2>
-    
-    <div class="form-group">
-        <label>縣市與行政區</label>
-        <div style="display: flex; gap: 5px;">
-            <select id="city" onchange="updateDistricts()">
-                <option value="新北市">新北市</option>
-                <option value="基隆市">基隆市</option>
-            </select>
-            <select id="district"></select>
+    <div class="container">
+        <!-- 標題區 -->
+        <div class="header">
+            <h1>土地使用補償金精算機</h1>
+            <p>專業的地政補償計算工具，精確到日、無條件進位</p>
         </div>
-    </div>
 
-    <div class="form-group">
-        <label>段名 / 地號</label>
-        <div style="display: flex; gap: 5px;">
-            <input type="text" id="section" placeholder="例如：水仙段">
-            <input type="text" id="landNumber" placeholder="地號8碼">
+        <!-- 基本資料卡片 -->
+        <div class="card">
+            <div class="card-title">📋 基本資料</div>
+            <div class="card-subtitle">填寫案件位置與時間</div>
+
+            <div id="alertContainer"></div>
+
+            <form id="calcForm">
+                <!-- 縣市與行政區 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">縣市 <span class="required">*</span></label>
+                        <select id="city" class="form-select" required>
+                            <option value="">請選擇縣市</option>
+                            <option value="新北市">新北市</option>
+                            <option value="基隆市">基隆市</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">行政區 <span class="required">*</span></label>
+                        <select id="district" class="form-select" required>
+                            <option value="">請選擇行政區</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 段名 -->
+                <div class="form-group">
+                    <label class="form-label">段名 <span class="required">*</span></label>
+                    <input type="text" id="section" class="form-input" placeholder="例如：海濱段" required />
+                </div>
+
+                <!-- 地號 -->
+                <div class="form-group">
+                    <label class="form-label">地號 <span class="required">*</span></label>
+                    <div class="land-number-group">
+                        <div>
+                            <input type="text" id="landNumberMain" class="form-input" placeholder="0123" maxlength="4" required />
+                            <div class="land-number-hint">母號 (必填)</div>
+                        </div>
+                        <div>
+                            <input type="text" id="landNumberSub" class="form-input" placeholder="0000" maxlength="4" />
+                            <div class="land-number-hint">子號 (選填)</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">系統將自動補零至 4 碼，組合為 8 碼地號</div>
+                </div>
+
+                <!-- 日期 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">起日 (選填)</label>
+                        <input type="text" id="startDate" class="form-input" placeholder="民國 YYYYMMDD (例如 1100505)" />
+                        <div class="land-number-hint">若留空，系統自動以迄日向前推算 5 年</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">迄日 <span class="required">*</span></label>
+                        <input type="text" id="endDate" class="form-input" placeholder="民國 YYYYMMDD (例如 1150505)" required />
+                    </div>
+                </div>
+
+                <!-- 年費率 -->
+                <div class="form-group">
+                    <label class="form-label">年費率 (%) <span class="required">*</span></label>
+                    <input type="number" id="feeRate" class="form-input" placeholder="5" value="5" min="0" max="100" step="0.01" required />
+                </div>
+
+                <!-- 按鈕 -->
+                <button type="button" id="fetchPricesBtn" class="btn btn-primary" style="margin-bottom: 1rem;">
+                    讀取地價
+                </button>
+            </form>
         </div>
-    </div>
 
-    <div class="form-group">
-        <label>計算期間 (民國年月日，如 1150505)</label>
-        <div style="display: flex; gap: 5px;">
-            <div>
-                <input type="text" id="startDate" placeholder="起日 (選填)">
-                <div class="hint">未填則由迄日往前推5年</div>
+        <!-- 地價選擇卡片 -->
+        <div id="priceCard" class="card" style="display: none;">
+            <div class="card-title">💰 歷年地價</div>
+            <div class="card-subtitle">選擇用於計算的公告地價，允許手動修改</div>
+
+            <div id="priceContainer" class="price-selection"></div>
+
+            <button type="button" id="calculateBtn" class="btn btn-secondary">
+                執行計算
+            </button>
+        </div>
+
+        <!-- 結果卡片 -->
+        <div id="resultCard" class="card result-section">
+            <div class="card-title">✅ 計算結果</div>
+
+            <div class="result-total">
+                <div class="result-label">使用補償金總額</div>
+                <div class="result-amount" id="totalAmount">NT$ 0</div>
             </div>
-            <div>
-                <input type="text" id="endDate" value="1150505" placeholder="迄日 (必填)">
-                <div class="hint">必填</div>
+
+            <div class="calculation-details">
+                <div class="detail-row">
+                    <span class="detail-label">起算日期</span>
+                    <span class="detail-value" id="detailStartDate">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">截止日期</span>
+                    <span class="detail-value" id="detailEndDate">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">總計日數</span>
+                    <span class="detail-value" id="detailDays">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">選定地價</span>
+                    <span class="detail-value" id="detailPrice">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">年費率</span>
+                    <span class="detail-value" id="detailRate">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">計算公式</span>
+                    <span class="detail-value" style="font-size: 0.75rem;">地價 × (費率÷100) × (日數÷365)</span>
+                </div>
             </div>
+
+            <h3 style="font-size: 1rem; font-weight: 600; color: #0f172a; margin-bottom: 1rem;">年度明細</h3>
+            <table class="yearly-table">
+                <thead>
+                    <tr>
+                        <th>年份</th>
+                        <th>公告地價</th>
+                        <th>占用日數</th>
+                        <th>補償金</th>
+                    </tr>
+                </thead>
+                <tbody id="yearlyTableBody">
+                </tbody>
+            </table>
         </div>
     </div>
-    
-    <div class="form-group">
-        <label>年費率 (%)</label>
-        <input type="number" id="rate" value="5" step="0.1">
-    </div>
-    
-    <button onclick="fetchPrices()" id="fetchBtn" style="background: #007bff;">1. 帶入地價資料</button>
 
-    <div id="priceFields" class="price-box" style="display:none;">
-        <p>請選擇或輸入「當年公告地價」：</p>
-        <div id="dynamicInputs"></div>
-    </div>
-
-    <button onclick="calculate()" id="calcBtn" style="display:none;">2. 計算補償金</button>
-    
-    <div id="resultArea" class="result-box" style="display:none;">
-        <h3 style="margin-top:0;">計算結果</h3>
-        <p id="calcDetails" style="font-size: 14px; line-height: 1.6;"></p>
-        <h2 id="finalResult" style="color: #d9534f; margin: 0;"></h2>
-    </div>
-</div>
-
-<script>
-    const districtMap = {
-        "新北市": ["淡水區", "三芝區", "石門區", "金山區", "萬里區", "瑞芳區", "平溪區", "雙溪區", "貢寮區"],
-        "基隆市": ["七堵區"]
-    };
-
-    function updateDistricts() {
-        const city = document.getElementById('city').value;
-        const districtSelect = document.getElementById('district');
-        districtSelect.innerHTML = '';
-        districtMap[city].forEach(d => {
-            districtSelect.innerHTML += `<option value="${d}">${d}</option>`;
-        });
-    }
-    window.onload = updateDistricts;
-
-    function parseRocDate(dateStr) {
-        if(!dateStr || dateStr.length < 6) return null; 
-        const year = parseInt(dateStr.slice(0, dateStr.length - 4)) + 1911;
-        const month = parseInt(dateStr.slice(-4, -2)) - 1;
-        const day = parseInt(dateStr.slice(-2));
-        return new Date(year, month, day);
-    }
-
-    function toRocString(dateObj) {
-        const y = dateObj.getFullYear() - 1911;
-        const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-        const d = dateObj.getDate().toString().padStart(2, '0');
-        return `${y}/${m}/${d}`;
-    }
-
-    async function fetchPrices() {
-        const endDateVal = document.getElementById('endDate').value;
-        if(!endDateVal) return alert("請輸入迄日！");
-
-        const fetchBtn = document.getElementById('fetchBtn');
-        fetchBtn.innerText = "讀取中...";
-        fetchBtn.disabled = true;
-
-        const payload = {
-            city: document.getElementById('city').value,
-            district: document.getElementById('district').value,
-            section: document.getElementById('section').value,
-            landNumber: document.getElementById('landNumber').value,
-            endDate: endDateVal,
-            startDate: document.getElementById('startDate').value
+    <script>
+        // ========== 資料定義 ==========
+        const DISTRICTS = {
+            '新北市': ['淡水區', '三芝區', '石門區', '金山區', '萬里區', '瑞芳區', '平溪區', '雙溪區', '貢寮區'],
+            '基隆市': ['七堵區']
         };
 
-        try {
-            const response = await fetch('/api/get_calc_data', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
-            if (data.error) return alert(data.error);
-
-            const container = document.getElementById('dynamicInputs');
-            container.innerHTML = '';
-            data.yearsData.reverse().forEach((item, index) => {
-                container.innerHTML += `<div style="margin-bottom:5px;">
-                    <label>
-                        <input type="radio" name="selectedPrice" value="${item.price}" ${index === 0 ? 'checked' : ''}>
-                        ${item.year}年: <input type="number" class="price-input" value="${item.price}" style="width: 120px; display:inline-block;"> 元
-                    </label>
-                </div>`;
-            });
-            document.getElementById('priceFields').style.display = 'block';
-            document.getElementById('calcBtn').style.display = 'block';
-        } catch (error) {
-            alert("連線錯誤");
-        } finally {
-            fetchBtn.innerText = "1. 帶入地價資料";
-            fetchBtn.disabled = false;
-        }
-    }
-
-    function calculate() {
-        const selectedRadio = document.querySelector('input[name="selectedPrice"]:checked');
-        if (!selectedRadio) return alert('請先帶入並選擇地價');
-        const price = parseFloat(selectedRadio.closest('label').querySelector('.price-input').value);
-        const ratePercent = parseFloat(document.getElementById('rate').value);
+        // ========== 工具函數 ==========
         
-        // 日期處理
-        const endStr = document.getElementById('endDate').value;
-        const startStr = document.getElementById('startDate').value;
-        const endObj = parseRocDate(endStr);
-        if(!endObj) return alert('迄日格式錯誤');
-
-        let startObj = parseRocDate(startStr);
-        let isDefaultFiveYears = false;
-
-        if (!startObj) {
-            // 如果沒填起日，自動回推 5 年
-            startObj = new Date(endObj);
-            startObj.setFullYear(startObj.getFullYear() - 5);
-            isDefaultFiveYears = true;
+        /**
+         * 民國日期轉西元
+         */
+        function rocToWestern(rocDate) {
+            if (!rocDate || rocDate.length !== 7) return null;
+            const year = parseInt(rocDate.substring(0, 3)) + 1911;
+            const month = rocDate.substring(3, 5);
+            const day = rocDate.substring(5, 7);
+            return `${year}${month}${day}`;
         }
 
-        const diffDays = Math.ceil(Math.abs(endObj - startObj) / (1000 * 60 * 60 * 24));
-        const rawAmount = price * (ratePercent/100) * (diffDays / 365);
-        const finalAmount = Math.ceil(rawAmount); // 無條件進位
+        /**
+         * 計算兩日期間的天數
+         */
+        function calculateDaysBetween(startDateStr, endDateStr) {
+            const start = new Date(startDateStr.substring(0, 4), 
+                                   parseInt(startDateStr.substring(4, 6)) - 1, 
+                                   startDateStr.substring(6, 8));
+            const end = new Date(endDateStr.substring(0, 4), 
+                                parseInt(endDateStr.substring(4, 6)) - 1, 
+                                endDateStr.substring(6, 8));
+            const diffTime = Math.abs(end - start);
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // 包含起訖日
+        }
 
-        document.getElementById('calcDetails').innerHTML = `
-            使用期間：${toRocString(startObj)} 至 ${toRocString(endObj)} ${isDefaultFiveYears ? '(自動推算5年)' : ''}<br>
-            計算日數：${diffDays} 天<br>
-            計算公式：${price} × ${ratePercent}% × (${diffDays}/365)
-        `;
-        document.getElementById('finalResult').innerText = `NT$ ${finalAmount.toLocaleString()}`;
-        document.getElementById('resultArea').style.display = 'block';
-    }
-</script>
+        /**
+         * 格式化金額
+         */
+        function formatCurrency(amount) {
+            return 'NT$ ' + Math.floor(amount).toLocaleString('zh-TW');
+        }
+
+        /**
+         * 西元日期轉民國
+         */
+        function westernToROC(westernDate) {
+            const year = parseInt(westernDate.substring(0, 4)) - 1911;
+            const month = westernDate.substring(4, 6);
+            const day = westernDate.substring(6, 8);
+            return `民國 ${year} 年 ${month} 月 ${day} 日`;
+        }
+
+        /**
+         * 地號補零
+         */
+        function padLandNumber(value) {
+            return String(value).padStart(4, '0');
+        }
+
+        /**
+         * 顯示警告訊息
+         */
+        function showAlert(message, type = 'error') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+
+        // ========== 事件監聽 ==========
+
+        // 縣市變更時更新行政區
+        document.getElementById('city').addEventListener('change', (e) => {
+            const city = e.target.value;
+            const districtSelect = document.getElementById('district');
+            districtSelect.innerHTML = '<option value="">請選擇行政區</option>';
+            
+            if (city && DISTRICTS[city]) {
+                DISTRICTS[city].forEach(district => {
+                    const option = document.createElement('option');
+                    option.value = district;
+                    option.textContent = district;
+                    districtSelect.appendChild(option);
+                });
+            }
+        });
+
+        // 地號補零
+        document.getElementById('landNumberMain').addEventListener('blur', (e) => {
+            e.target.value = padLandNumber(e.target.value);
+        });
+
+        document.getElementById('landNumberSub').addEventListener('blur', (e) => {
+            e.target.value = padLandNumber(e.target.value || '0');
+        });
+
+        // 讀取地價按鈕
+        document.getElementById('fetchPricesBtn').addEventListener('click', async () => {
+            const city = document.getElementById('city').value;
+            const district = document.getElementById('district').value;
+            const section = document.getElementById('section').value;
+            const landNumberMain = padLandNumber(document.getElementById('landNumberMain').value);
+            const landNumberSub = padLandNumber(document.getElementById('landNumberSub').value || '0');
+            const endDate = document.getElementById('endDate').value;
+
+            // 驗證
+            if (!city || !district || !section || !landNumberMain || !endDate) {
+                showAlert('請填寫所有必填欄位');
+                return;
+            }
+
+            if (endDate.length !== 7) {
+                showAlert('迄日格式不正確，應為民國 YYYYMMDD');
+                return;
+            }
+
+            const landNumber = landNumberMain + landNumberSub;
+            const startDate = document.getElementById('startDate').value;
+            
+            // 若起日未填，自動推算
+            let calculatedStartDate = startDate;
+            if (!startDate) {
+                const endYear = parseInt(endDate.substring(0, 3));
+                const startYear = endYear - 5;
+                calculatedStartDate = `${String(startYear).padStart(3, '0')}0101`;
+            }
+
+            // 呼叫 API
+            const btn = document.getElementById('fetchPricesBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 讀取中...';
+
+            try {
+                const response = await fetch('/api/get_calc_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        city,
+                        district,
+                        section,
+                        landNumber,
+                        startDate: calculatedStartDate,
+                        endDate
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API 錯誤: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayPriceSelection(data.yearsData);
+                document.getElementById('priceCard').style.display = 'block';
+                showAlert('地價資料讀取成功', 'success');
+
+            } catch (error) {
+                console.error('API 呼叫失敗:', error);
+                showAlert(`讀取失敗: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '讀取地價';
+            }
+        });
+
+        /**
+         * 顯示地價選擇
+         */
+        function displayPriceSelection(yearsData) {
+            const container = document.getElementById('priceContainer');
+            container.innerHTML = '';
+
+            yearsData.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'price-item';
+                
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'selectedPrice';
+                input.value = item.year;
+                input.dataset.price = item.price;
+                if (index === yearsData.length - 1) input.checked = true; // 預設勾選最新年份
+
+                const label = document.createElement('div');
+                label.className = 'price-label';
+                
+                const yearSpan = document.createElement('span');
+                yearSpan.className = 'price-year';
+                yearSpan.textContent = `${item.year} 年`;
+                
+                const priceSpan = document.createElement('span');
+                priceSpan.className = 'price-value';
+                priceSpan.textContent = `NT$ ${item.price.toLocaleString('zh-TW')}`;
+                
+                label.appendChild(yearSpan);
+                label.appendChild(priceSpan);
+                
+                div.appendChild(input);
+                div.appendChild(label);
+                container.appendChild(div);
+            });
+        }
+
+        // 執行計算按鈕
+        document.getElementById('calculateBtn').addEventListener('click', () => {
+            const selectedRadio = document.querySelector('input[name="selectedPrice"]:checked');
+            if (!selectedRadio) {
+                showAlert('請選擇一個年份的地價');
+                return;
+            }
+
+            const selectedYear = selectedRadio.value;
+            const selectedPrice = parseInt(selectedRadio.dataset.price);
+            const endDate = document.getElementById('endDate').value;
+            const startDate = document.getElementById('startDate').value;
+            const feeRate = parseFloat(document.getElementById('feeRate').value);
+
+            // 計算起日
+            let calculatedStartDate = startDate;
+            if (!startDate) {
+                const endYear = parseInt(endDate.substring(0, 3));
+                const startYear = endYear - 5;
+                calculatedStartDate = `${String(startYear).padStart(3, '0')}0101`;
+            }
+
+            // 轉換為西元
+            const startWestern = rocToWestern(calculatedStartDate);
+            const endWestern = rocToWestern(endDate);
+
+            if (!startWestern || !endWestern) {
+                showAlert('日期轉換失敗，請檢查日期格式');
+                return;
+            }
+
+            // 計算日數
+            const totalDays = calculateDaysBetween(startWestern, endWestern);
+
+            // 計算補償金 (無條件進位)
+            const compensation = Math.ceil(selectedPrice * (feeRate / 100) * (totalDays / 365));
+
+            // 顯示結果
+            document.getElementById('totalAmount').textContent = formatCurrency(compensation);
+            document.getElementById('detailStartDate').textContent = westernToROC(startWestern);
+            document.getElementById('detailEndDate').textContent = westernToROC(endWestern);
+            document.getElementById('detailDays').textContent = `${totalDays} 天`;
+            document.getElementById('detailPrice').textContent = `NT$ ${selectedPrice.toLocaleString('zh-TW')}`;
+            document.getElementById('detailRate').textContent = `${feeRate}%`;
+
+            // 生成年度明細表
+            generateYearlyTable(selectedYear, selectedPrice, feeRate, startWestern, endWestern);
+
+            // 顯示結果區
+            document.getElementById('resultCard').classList.add('show');
+            document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+        });
+
+        /**
+         * 生成年度明細表
+         */
+        function generateYearlyTable(selectedYear, selectedPrice, feeRate, startWestern, endWestern) {
+            const tbody = document.getElementById('yearlyTableBody');
+            tbody.innerHTML = '';
+
+            const startYear = parseInt(startWestern.substring(0, 4));
+            const endYear = parseInt(endWestern.substring(0, 4));
+
+            for (let year = startYear; year <= endYear; year++) {
+                // 計算該年的起迄日
+                let yearStart, yearEnd;
+                
+                if (year === startYear) {
+                    yearStart = startWestern;
+                } else {
+                    yearStart = `${year}0101`;
+                }
+
+                if (year === endYear) {
+                    yearEnd = endWestern;
+                } else {
+                    yearEnd = `${year}1231`;
+                }
+
+                const yearDays = calculateDaysBetween(yearStart, yearEnd);
+                const yearCompensation = Math.ceil(selectedPrice * (feeRate / 100) * (yearDays / 365));
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${year} 年</td>
+                    <td class="number">NT$ ${selectedPrice.toLocaleString('zh-TW')}</td>
+                    <td class="number">${yearDays} 天</td>
+                    <td class="number">NT$ ${yearCompensation.toLocaleString('zh-TW')}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        // 初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            // 初始化縣市下拉選單
+            const citySelect = document.getElementById('city');
+            citySelect.value = '新北市';
+            citySelect.dispatchEvent(new Event('change'));
+        });
+    </script>
 </body>
 </html>
