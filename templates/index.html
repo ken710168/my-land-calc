@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>使用補償金計算機 (雲端版)</title>
+    <title>使用補償金計算機 (智慧日算版)</title>
     <style>
         body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
         .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -11,6 +11,8 @@
         input, select { width: 100%; padding: 8px; box-sizing: border-box;}
         button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; cursor: pointer; margin-top: 10px;}
         .price-box { background: #e9ecef; padding: 10px; margin-top: 10px; border-radius: 5px; }
+        .result-box { background: #d1ecf1; color: #0c5460; padding: 15px; margin-top: 15px; border-radius: 5px; border: 1px solid #bee5eb; }
+        .hint { font-size: 12px; color: #666; font-weight: normal; margin-top: 2px; }
     </style>
 </head>
 <body>
@@ -25,39 +27,54 @@
                 <option value="新北市">新北市</option>
                 <option value="基隆市">基隆市</option>
             </select>
-            <select id="district">
-                </select>
+            <select id="district"></select>
         </div>
     </div>
 
     <div class="form-group">
         <label>段名 / 地號</label>
         <div style="display: flex; gap: 5px;">
-            <input type="text" id="section" value="" placeholder="例如：水仙段">
-            <input type="text" id="landNumber" value="" placeholder="地號8碼或簡碼">
+            <input type="text" id="section" placeholder="例如：水仙段">
+            <input type="text" id="landNumber" placeholder="地號8碼">
         </div>
     </div>
 
     <div class="form-group">
-        <label>期間迄 (例如 1150505)</label>
-        <input type="text" id="endDate" value="1150505">
+        <label>計算期間 (民國年月日，如 1150505)</label>
+        <div style="display: flex; gap: 5px;">
+            <div>
+                <input type="text" id="startDate" placeholder="起日 (選填)">
+                <div class="hint">未填則由迄日往前推5年</div>
+            </div>
+            <div>
+                <input type="text" id="endDate" value="1150505" placeholder="迄日 (必填)">
+                <div class="hint">必填</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label>年費率 (%)</label>
+        <input type="number" id="rate" value="5" step="0.1">
     </div>
     
     <button onclick="fetchPrices()" id="fetchBtn" style="background: #007bff;">1. 帶入地價資料</button>
 
     <div id="priceFields" class="price-box" style="display:none;">
-        <p>各奇數年公告地價 (自動從資料庫帶入，可修改)：</p>
+        <p>請選擇或輸入「當年公告地價」：</p>
         <div id="dynamicInputs"></div>
     </div>
 
     <button onclick="calculate()" id="calcBtn" style="display:none;">2. 計算補償金</button>
-    <h3 id="result"></h3>
+    
+    <div id="resultArea" class="result-box" style="display:none;">
+        <h3 style="margin-top:0;">計算結果</h3>
+        <p id="calcDetails" style="font-size: 14px; line-height: 1.6;"></p>
+        <h2 id="finalResult" style="color: #d9534f; margin: 0;"></h2>
+    </div>
 </div>
 
 <script>
-    // ==========================================
-    // 1. 縣市與行政區連動邏輯
-    // ==========================================
     const districtMap = {
         "新北市": ["淡水區", "三芝區", "石門區", "金山區", "萬里區", "瑞芳區", "平溪區", "雙溪區", "貢寮區"],
         "基隆市": ["七堵區"]
@@ -66,24 +83,32 @@
     function updateDistricts() {
         const city = document.getElementById('city').value;
         const districtSelect = document.getElementById('district');
-        
-        // 清空現有的選項
         districtSelect.innerHTML = '';
-        
-        // 根據選擇的縣市，把對應的行政區塞進去
         districtMap[city].forEach(d => {
             districtSelect.innerHTML += `<option value="${d}">${d}</option>`;
         });
     }
-
-    // 當網頁一打開時，先執行一次，讓預設的新北市行政區跑出來
     window.onload = updateDistricts;
 
+    function parseRocDate(dateStr) {
+        if(!dateStr || dateStr.length < 6) return null; 
+        const year = parseInt(dateStr.slice(0, dateStr.length - 4)) + 1911;
+        const month = parseInt(dateStr.slice(-4, -2)) - 1;
+        const day = parseInt(dateStr.slice(-2));
+        return new Date(year, month, day);
+    }
 
-    // ==========================================
-    // 2. 抓取資料與計算邏輯 (維持不變)
-    // ==========================================
+    function toRocString(dateObj) {
+        const y = dateObj.getFullYear() - 1911;
+        const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+        const d = dateObj.getDate().toString().padStart(2, '0');
+        return `${y}/${m}/${d}`;
+    }
+
     async function fetchPrices() {
+        const endDateVal = document.getElementById('endDate').value;
+        if(!endDateVal) return alert("請輸入迄日！");
+
         const fetchBtn = document.getElementById('fetchBtn');
         fetchBtn.innerText = "讀取中...";
         fetchBtn.disabled = true;
@@ -93,8 +118,8 @@
             district: document.getElementById('district').value,
             section: document.getElementById('section').value,
             landNumber: document.getElementById('landNumber').value,
-            endDate: document.getElementById('endDate').value,
-            startDate: ""
+            endDate: endDateVal,
+            startDate: document.getElementById('startDate').value
         };
 
         try {
@@ -103,40 +128,23 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             });
-            
-            if (!response.ok) {
-                throw new Error(`伺服器錯誤代碼: ${response.status}`);
-            }
-
             const data = await response.json();
-            
-            if (data.error) {
-                alert(data.error);
-                return;
-            }
+            if (data.error) return alert(data.error);
 
             const container = document.getElementById('dynamicInputs');
             container.innerHTML = '';
-            
-            let hasAnyPrice = false;
-
-            data.yearsData.forEach(item => {
-                if(item.price !== "") hasAnyPrice = true;
-                
+            data.yearsData.reverse().forEach((item, index) => {
                 container.innerHTML += `<div style="margin-bottom:5px;">
-                    ${item.year}年: <input type="number" class="price-input" value="${item.price}" placeholder="查無資料，可手動輸入">
+                    <label>
+                        <input type="radio" name="selectedPrice" value="${item.price}" ${index === 0 ? 'checked' : ''}>
+                        ${item.year}年: <input type="number" class="price-input" value="${item.price}" style="width: 120px; display:inline-block;"> 元
+                    </label>
                 </div>`;
             });
-
-            if (!hasAnyPrice) {
-                alert("提醒：資料庫中找不到這筆地號的地價，您可以手動填寫或檢查輸入是否有誤。");
-            }
-            
             document.getElementById('priceFields').style.display = 'block';
             document.getElementById('calcBtn').style.display = 'block';
-            
         } catch (error) {
-            alert("連線發生錯誤，請稍後再試或檢查 Logs。\n詳細原因: " + error.message);
+            alert("連線錯誤");
         } finally {
             fetchBtn.innerText = "1. 帶入地價資料";
             fetchBtn.disabled = false;
@@ -144,23 +152,39 @@
     }
 
     function calculate() {
-        const inputs = document.querySelectorAll('.price-input');
-        let total = 0;
-        let count = 0;
-        inputs.forEach(input => {
-            if(input.value) {
-                total += parseFloat(input.value);
-                count++;
-            }
-        });
+        const selectedRadio = document.querySelector('input[name="selectedPrice"]:checked');
+        if (!selectedRadio) return alert('請先帶入並選擇地價');
+        const price = parseFloat(selectedRadio.closest('label').querySelector('.price-input').value);
+        const ratePercent = parseFloat(document.getElementById('rate').value);
         
-        if(count === 0) return alert('請確認地價已填寫');
-        
-        const avg = total / count;
-        const finalAmount = Math.round(avg * 0.05 * 5);
-        document.getElementById('result').innerText = `估算補償金：NT$ ${finalAmount}`;
+        // 日期處理
+        const endStr = document.getElementById('endDate').value;
+        const startStr = document.getElementById('startDate').value;
+        const endObj = parseRocDate(endStr);
+        if(!endObj) return alert('迄日格式錯誤');
+
+        let startObj = parseRocDate(startStr);
+        let isDefaultFiveYears = false;
+
+        if (!startObj) {
+            // 如果沒填起日，自動回推 5 年
+            startObj = new Date(endObj);
+            startObj.setFullYear(startObj.getFullYear() - 5);
+            isDefaultFiveYears = true;
+        }
+
+        const diffDays = Math.ceil(Math.abs(endObj - startObj) / (1000 * 60 * 60 * 24));
+        const rawAmount = price * (ratePercent/100) * (diffDays / 365);
+        const finalAmount = Math.ceil(rawAmount); // 無條件進位
+
+        document.getElementById('calcDetails').innerHTML = `
+            使用期間：${toRocString(startObj)} 至 ${toRocString(endObj)} ${isDefaultFiveYears ? '(自動推算5年)' : ''}<br>
+            計算日數：${diffDays} 天<br>
+            計算公式：${price} × ${ratePercent}% × (${diffDays}/365)
+        `;
+        document.getElementById('finalResult').innerText = `NT$ ${finalAmount.toLocaleString()}`;
+        document.getElementById('resultArea').style.display = 'block';
     }
 </script>
-
 </body>
 </html>
