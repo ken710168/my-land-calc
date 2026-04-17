@@ -123,7 +123,7 @@
     </div>
 
     <script>
-        const DISTRICTS = {
+       const DISTRICTS = {
             "新北市": ["淡水區", "三芝區", "石門區", "金山區", "萬里區", "瑞芳區", "平溪區", "雙溪區", "貢寮區"],
             "基隆市": ["七堵區"]
         };
@@ -148,7 +148,6 @@
             const district = document.getElementById('district').value;
             let secSelect = document.getElementById('section');
             
-            // 如果變成輸入框了，變回下拉選單
             if (secSelect.tagName === 'INPUT') {
                 const newSelect = document.createElement('select');
                 newSelect.id = 'section'; newSelect.className = 'form-select';
@@ -202,7 +201,6 @@
 
         // 1. 抓取地價
         async function fetchPrices() {
-            // UI 重置：隱藏舊的計算結果
             document.getElementById('resultCard').style.display = 'none';
 
             const main = document.getElementById('landMain').value.trim();
@@ -240,7 +238,6 @@
                 
                 if (yearsData.length === 0) {
                     showMsg("查無地價資料，請確認輸入是否正確，或自行在下方新增。");
-                    // 沒資料時，預設塞一個空白列讓使用者填寫
                     yearsData.push({year: new Date().getFullYear()-1911, price: 0}); 
                 } else {
                     showMsg("公告地價已成功帶入", false);
@@ -276,10 +273,14 @@
                 if(!end) throw new Error("迄日格式錯誤");
 
                 let start = parseROC(startDateStr);
+                
+                // --- 🚀 關鍵修正：回推 5 年再加 1 天 ---
                 if(!start) { 
                     start = new Date(end); 
-                    start.setFullYear(start.getFullYear() - 5); 
+                    start.setFullYear(start.getFullYear() - 5); // 扣 5 年
+                    start.setDate(start.getDate() + 1);         // 加 1 天
                 }
+                // ----------------------------------------
                 
                 if(start > end) throw new Error("起日不可大於迄日");
 
@@ -295,17 +296,15 @@
                     const days = Math.floor((segEnd - tempStart) / (1000*60*60*24)) + 1;
                     const rocYear = currentYear - 1911;
                     
-                    // 偶數年自動減一找奇數年地價
                     let lookupYear = (rocYear % 2 === 0) ? (rocYear - 1) : rocYear;
                     
-                    // 防呆：找小於或等於查找年份的資料
                     const available = yearsData.filter(d => d.year <= lookupYear);
                     const finalYear = available.length ? Math.max(...available.map(d => d.year)) : lookupYear;
                     const priceVal = (yearsData.find(d => d.year === finalYear) || {price:0}).price;
 
                     const subTotal = priceVal * rate * (days / 365);
                     const subTotalCeil = Math.ceil(subTotal);
-                    totalAccumulated += subTotalCeil; // 把進位後的數字加進總數
+                    totalAccumulated += subTotalCeil; 
 
                     detailBody.innerHTML += `<tr>
                         <td>${rocYear}年 (${fmtDate(tempStart)}~${fmtDate(segEnd)}) <br/><small style="color:#64748b;">適用${finalYear}年單價</small></td>
@@ -323,7 +322,6 @@
             } catch (e) { showMsg(e.message); }
         }
 
-        // 升級版日期解析 (支援6碼與7碼)
         function parseROC(s) {
             s = s.trim();
             if(!s || s.length < 6 || s.length > 7) return null;
