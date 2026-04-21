@@ -1,415 +1,166 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>土地使用補償金精算機</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>土地補償金精算機 - 多檔案同步版</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Noto Sans TC', sans-serif; background: linear-gradient(135deg, #f0f4f8 0%, #e8f0f8 100%); color: #1a202c; min-height: 100vh; padding: 2rem 1rem; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 2rem; }
-        .header h1 { font-size: 2.2rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; letter-spacing: -1px; }
-        .card { backdrop-filter: blur(12px); background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 1rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); padding: 2rem; margin-bottom: 1.5rem; }
-        .card-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: #1e293b; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.8rem; }
-        .form-group { margin-bottom: 1.2rem; }
-        .form-label { display: block; font-size: 0.875rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; }
-        .form-input, .form-select { width: 100%; padding: 0.75rem; font-size: 1rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; background: #fff; transition: all 0.2s; font-family: inherit; }
-        .form-input:focus, .form-select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        .land-number-group { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.5rem; align-items: center; }
-        .hint { font-size: 0.75rem; color: #94a3b8; margin-top: 0.3rem; font-weight: 500; }
-        .btn { padding: 0.8rem; font-size: 1rem; font-weight: 700; border: none; border-radius: 0.5rem; cursor: pointer; transition: 0.2s; width: 100%; letter-spacing: 1px; }
-        .btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2); }
-        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3); }
-        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-        .btn-secondary { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; margin-top: 1rem; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); }
-        .btn-secondary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(16, 185, 129, 0.3); }
-        .alert { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 600; display: none; }
-        .alert-error { background: #fef2f2; border: 1px solid #fee2e2; color: #991b1b; }
-        .alert-success { background: #f0fdf4; border: 1px solid #dcfce7; color: #166534; }
-        table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.9rem; }
-        th { background: #f8fafc; padding: 0.8rem; text-align: left; border-bottom: 2px solid #e2e8f0; color: #475569; }
-        td { padding: 0.8rem; border-bottom: 1px solid #f1f5f9; color: #334155; }
-        .number { font-family: 'JetBrains Mono', monospace; text-align: right; }
-        .result-box { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 1.5rem; border-radius: 0.75rem; text-align: center; margin-top: 1.5rem; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2); }
-        .result-amount { font-family: 'JetBrains Mono', monospace; font-size: 2.5rem; font-weight: 800; margin-top: 0.5rem; color: #10b981; }
-        @media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
+        :root { --primary: #2563eb; --secondary: #10b981; --bg: #f8fafc; }
+        body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: #1e293b; padding: 2rem 1rem; }
+        .card { max-width: 850px; margin: auto; background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h1 { text-align: center; font-size: 1.8rem; margin-bottom: 2rem; color: #0f172a; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1rem; }
+        label { display: block; font-weight: 700; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        select, input { width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 1rem; }
+        .btn { padding: 0.8rem; border-radius: 0.5rem; border: none; cursor: pointer; font-weight: 700; transition: 0.2s; width: 100%; }
+        .btn-p { background: var(--primary); color: white; margin-top: 1rem; }
+        .btn-s { background: var(--secondary); color: white; margin-top: 1.5rem; }
+        .result-box { background: #0f172a; color: #10b981; padding: 1.5rem; border-radius: 0.75rem; text-align: center; margin-top: 2rem; }
+        .amount { font-family: 'JetBrains Mono'; font-size: 2.2rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
+        th, td { padding: 0.8rem; text-align: left; border-bottom: 1px solid #f1f5f9; }
+        th { background: #f8fafc; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>土地使用補償金精算機</h1>
+    <div class="card">
+        <h1>土地使用補償金精算機</h1>
+        
+        <div class="form-row">
+            <div><label>縣市</label><select id="city"><option value="新北市">新北市</option><option value="基隆市">基隆市</option></select></div>
+            <div><label>行政區</label><select id="district"></select></div>
         </div>
 
-        <div id="globalAlert" class="alert"></div>
-
-        <div class="card">
-            <div class="card-title">📋 案件資料輸入</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">縣市</label>
-                    <select id="city" class="form-select">
-                        <option value="新北市">新北市</option>
-                        <option value="基隆市">基隆市</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">行政區</label>
-                    <select id="district" class="form-select"></select>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">段名 (母地段)</label>
-                    <select id="section" class="form-select" disabled>
-                        <option value="">請先選擇行政區</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">小段 (子地段)</label>
-                    <select id="subSection" class="form-select" disabled>
-                        <option value="">無小段</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">地號 (母號-子號)</label>
-                    <div class="land-number-group">
-                        <input type="text" id="landMain" class="form-input" placeholder="0000" maxlength="4">
-                        <span>-</span>
-                        <input type="text" id="landSub" class="form-input" placeholder="0000" maxlength="4">
-                    </div>
-                    <div class="hint">未滿4碼自動補零。若無子號請留空</div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">計算面積 (m²)</label>
-                    <input type="number" id="area" class="form-input" placeholder="讀取後自動帶入" step="0.01">
-                    <div class="hint">可手動修改計算面積</div>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">起日 (選填)</label>
-                    <input type="text" id="startDate" class="form-input" placeholder="例如: 1100101">
-                    <div class="hint">未填則由迄日回推 5 年加 1 天</div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">迄日 (必填)</label>
-                    <input type="text" id="endDate" class="form-input" placeholder="例如: 1150101">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">年費率 (%)</label>
-                <input type="number" id="feeRate" class="form-input" value="5" step="0.1">
-            </div>
-
-            <button onclick="fetchPrices()" id="fetchBtn" class="btn btn-primary">1. 讀取地價與面積</button>
+        <div class="form-row">
+            <div><label>段名 (母地段)</label><select id="section" disabled><option value="">請先選擇行政區</option></select></div>
+            <div><label>小段 (子地段)</label><select id="subSection" disabled><option value="">無小段</option></select></div>
         </div>
 
-        <div id="priceCard" class="card" style="display:none;">
-            <div class="card-title">💰 公告地價確認</div>
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem; line-height: 1.5;">註：若資料庫查無特定年份價格，可於下方手動補填。<br>偶數年計算時，系統將自動套用您填寫的前一奇數年地價。</p>
-            <table>
-                <thead><tr><th>公告地價年份</th><th style="text-align:right;">單價 (元/m²)</th></tr></thead>
-                <tbody id="priceTableBody"></tbody>
-            </table>
-            <button onclick="calculateCompensation()" class="btn btn-secondary">2. 執行分段計算</button>
+        <div class="form-row">
+            <div>
+                <label>地號 (母-子)</label>
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <input type="text" id="lMain" placeholder="0000" maxlength="4">
+                    <span>-</span>
+                    <input type="text" id="lSub" placeholder="0000" maxlength="4">
+                </div>
+            </div>
+            <div><label>計算面積 (m²)</label><input type="number" id="area" step="0.01" placeholder="讀取後自動填入"></div>
         </div>
 
-        <div id="resultCard" class="card" style="display:none;">
-            <div class="card-title">✅ 計算明細表</div>
-            <table id="detailTable">
-                <thead><tr><th>年度區間</th><th>天數</th><th style="text-align:right;">小計 (元)</th></tr></thead>
-                <tbody id="detailTableBody"></tbody>
-            </table>
+        <div class="form-row">
+            <div><label>起日 (選填: 1100101)</label><input type="text" id="sDate"></div>
+            <div><label>迄日 (必填: 1150101)</label><input type="text" id="eDate"></div>
+        </div>
+
+        <button class="btn btn-p" onclick="fetchData()" id="btnF">1. 讀取公告地價與面積</button>
+
+        <div id="priceZone" style="display:none; margin-top:2rem;">
+            <label>💰 公告地價確認 (可手動修改)</label>
+            <table id="pTable"><thead><tr><th>年份</th><th>地價 (元/m²)</th></tr></thead><tbody></tbody></table>
+            <button class="btn btn-s" onclick="calculate()">2. 執行分段計算</button>
+        </div>
+
+        <div id="resZone" style="display:none;">
             <div class="result-box">
-                <div style="font-size: 1rem; opacity: 0.9; font-weight: 500;">補償金總計 (已執行無條件進位)</div>
-                <div class="result-amount" id="finalTotal">NT$ 0</div>
+                <div style="font-size: 0.9rem; color: #94a3b8;">總補償金 (無條件進位)</div>
+                <div class="amount" id="finalAmt">NT$ 0</div>
             </div>
+            <table id="dTable"><thead><tr><th>區間</th><th>天數</th><th>小計</th></tr></thead><tbody></tbody></table>
         </div>
     </div>
 
     <script>
-        const DISTRICTS = {
-            "新北市": ["淡水區", "三芝區", "石門區", "金山區", "萬里區", "瑞芳區", "平溪區", "雙溪區", "貢寮區"],
-            "基隆市": ["七堵區"]
-        };
-
+        const DISTS = {"新北市": ["淡水區", "三芝區", "石門區", "金山區", "萬里區", "瑞芳區", "平溪區", "雙溪區", "貢寮區"], "基隆市": ["七堵區"]};
         let yearsData = [];
 
-        // ==========================================
-        // 初始化與選單連動
-        // ==========================================
-        function initDistricts() {
+        function init() {
             const city = document.getElementById('city').value;
-            const distSelect = document.getElementById('district');
-            distSelect.innerHTML = '';
-            DISTRICTS[city].forEach(d => {
-                const opt = document.createElement('option');
-                opt.value = d; opt.innerText = d;
-                distSelect.appendChild(opt);
+            document.getElementById('district').innerHTML = DISTS[city].map(d => `<option value="${d}">${d}</option>`).join('');
+            loadSec();
+        }
+
+        async function loadSec() {
+            const city = document.getElementById('city').value, dist = document.getElementById('district').value;
+            const s = document.getElementById('section'); s.disabled = true; s.innerHTML = '<option>讀取中...</option>';
+            try {
+                const r = await fetch('/api/get_sections', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({city, district:dist})});
+                const d = await r.json();
+                s.innerHTML = d.sections.length ? d.sections.map(v => `<option value="${v}">${v}</option>`).join('') : '<option value="">查無地段</option>';
+                s.disabled = false;
+            } catch(e) { s.innerHTML = '<option>連線錯誤</option>'; }
+        }
+
+        async function fetchData() {
+            const btn = document.getElementById('btnF'); btn.innerText = "讀取中..."; btn.disabled = true;
+            const payload = {
+                city: document.getElementById('city').value,
+                district: document.getElementById('district').value,
+                section: document.getElementById('section').value,
+                subSection: document.getElementById('subSection').value,
+                landNumber: document.getElementById('lMain').value.padStart(4,'0') + document.getElementById('lSub').value.padStart(4,'0')
+            };
+            try {
+                const r = await fetch('/api/get_calc_data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+                const d = await r.json();
+                if(d.error) return alert(d.error);
+                document.getElementById('area').value = d.area || '';
+                yearsData = d.yearsData;
+                document.querySelector('#pTable tbody').innerHTML = yearsData.map(y => `<tr><td>${y.year}年</td><td><input type="number" class="p-edit" data-y="${y.year}" value="${y.price}"></td></tr>`).join('');
+                document.getElementById('priceZone').style.display = 'block';
+            } catch(e) { alert("讀取失敗"); } finally { btn.innerText = "1. 讀取公告地價與面積"; btn.disabled = false; }
+        }
+
+        function calculate() {
+            // 更新手動調整的地價
+            document.querySelectorAll('.p-edit').forEach(el => {
+                const target = yearsData.find(y => y.year == el.dataset.y);
+                if(target) target.price = parseFloat(el.value) || 0;
             });
-            updateSections();
-        }
 
-        async function updateSections() {
-            const city = document.getElementById('city').value;
-            const district = document.getElementById('district').value;
-            let secSelect = document.getElementById('section');
-            let subSelect = document.getElementById('subSection');
+            const area = parseFloat(document.getElementById('area').value), eStr = document.getElementById('eDate').value;
+            let sStr = document.getElementById('sDate').value;
             
-            if (secSelect.tagName === 'INPUT') {
-                const newSelect = document.createElement('select');
-                newSelect.id = 'section'; newSelect.className = 'form-select';
-                secSelect.parentNode.replaceChild(newSelect, secSelect);
-                secSelect = newSelect;
+            const end = parseROC(eStr); if(!end) return alert("請填寫正確的迄日");
+            let start = parseROC(sStr);
+            if(!start) { start = new Date(end); start.setFullYear(start.getFullYear()-5); start.setDate(start.getDate()+1); }
+            
+            let total = 0, tempS = new Date(start);
+            const tbody = document.querySelector('#dTable tbody'); tbody.innerHTML = '';
+
+            while(tempS <= end) {
+                const curY = tempS.getFullYear(), yEnd = new Date(curY, 11, 31);
+                const segE = yEnd < end ? yEnd : end;
+                const days = Math.floor((segE - tempS)/(86400000)) + 1;
+                const rocY = curY - 1911;
+
+                // 核心邏輯：偶數年抓前一年地價
+                let lookY = (rocY % 2 === 0) ? (rocY - 1) : rocY;
+                const data = yearsData.find(y => y.year <= lookY);
+                const price = data ? data.price : 0;
+
+                const subTotal = Math.ceil(price * area * 0.05 * (days / 365));
+                total += subTotal;
+
+                tbody.innerHTML += `<tr><td>${rocY}年 (${fmt(tempS)}~${fmt(segE)})<br><small>適用${data ? data.year : '?' }年價</small></td><td>${days}天</td><td>${subTotal.toLocaleString()}</td></tr>`;
+                tempS = new Date(segE); tempS.setDate(tempS.getDate() + 1);
             }
 
-            secSelect.innerHTML = '<option value="">載入中...</option>';
-            secSelect.disabled = true;
-            subSelect.innerHTML = '<option value="">無小段</option>';
-            subSelect.disabled = true;
-
-            try {
-                const res = await fetch('/api/get_sections', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ city, district })
-                });
-                const data = await res.json();
-                
-                secSelect.innerHTML = '<option value="">請選擇段名</option>';
-                if(data.sections && data.sections.length > 0) {
-                    data.sections.forEach(s => {
-                        const opt = document.createElement('option');
-                        opt.value = s; opt.innerText = s;
-                        secSelect.appendChild(opt);
-                    });
-                    secSelect.disabled = false;
-                } else {
-                    secSelect.innerHTML = '<option value="">此區查無地段</option>';
-                }
-            } catch (e) { 
-                secSelect.outerHTML = `<input type="text" id="section" class="form-input" placeholder="連線異常，請手動輸入 (例如: 文化段)" required />`;
-            }
-        }
-
-        document.getElementById('section').addEventListener('change', async (e) => {
-            const city = document.getElementById('city').value;
-            const district = document.getElementById('district').value;
-            const section = e.target.value;
-            const subSelect = document.getElementById('subSection');
-
-            subSelect.innerHTML = '<option value="">載入中...</option>';
-            subSelect.disabled = true;
-
-            if (!section) {
-                subSelect.innerHTML = '<option value="">無小段</option>';
-                return;
-            }
-
-            try {
-                const res = await fetch('/api/get_subsections', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ city, district, section })
-                });
-                const data = await res.json();
-
-                subSelect.innerHTML = '<option value="">無小段</option>';
-                if(data.subSections && data.subSections.length > 0) {
-                    data.subSections.forEach(s => {
-                        const opt = document.createElement('option');
-                        opt.value = s; opt.innerText = s;
-                        subSelect.appendChild(opt);
-                    });
-                    subSelect.disabled = false;
-                }
-            } catch (e) {
-                subSelect.innerHTML = '<option value="">無小段</option>';
-            }
-        });
-
-        document.getElementById('city').onchange = initDistricts;
-        document.getElementById('district').onchange = updateSections;
-        window.onload = initDistricts;
-
-        // 地號自動補零
-        [document.getElementById('landMain'), document.getElementById('landSub')].forEach(el => {
-            el.onblur = () => { if(el.value.trim()) el.value = el.value.trim().padStart(4, '0'); };
-        });
-
-        function showMsg(msg, isError = true) {
-            const el = document.getElementById('globalAlert');
-            el.innerText = msg; el.style.display = 'block';
-            el.className = `alert ${isError ? 'alert-error' : 'alert-success'}`;
-            setTimeout(() => el.style.display = 'none', 6000);
-        }
-
-        // ==========================================
-        // 核心一：讀取地價與面積
-        // ==========================================
-        async function fetchPrices() {
-            document.getElementById('resultCard').style.display = 'none';
-
-            const main = document.getElementById('landMain').value.trim();
-            const sub = document.getElementById('landSub').value.trim() || '0000';
-            const endDate = document.getElementById('endDate').value.trim();
-            const section = document.getElementById('section').value.trim();
-            const subSection = document.getElementById('subSection').value.trim();
-
-            if(!main || !endDate || !section) return showMsg("請填寫地號與迄日，並選擇段名");
-            if(endDate.length < 6 || endDate.length > 7) return showMsg("迄日格式錯誤 (應為 6~7 碼)");
-
-            const btn = document.getElementById('fetchBtn');
-            btn.disabled = true; btn.innerText = "讀取中...";
-
-            try {
-                const res = await fetch('/api/get_calc_data', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        city: document.getElementById('city').value,
-                        district: document.getElementById('district').value,
-                        section: section,
-                        subSection: subSection,
-                        landNumber: main.padStart(4, '0') + sub.padStart(4, '0'),
-                        endDate: endDate
-                    })
-                });
-                
-                const data = await res.json();
-                
-                if (data.error) throw new Error(data.error);
-                if (!res.ok) throw new Error(`伺服器異常 (代碼: ${res.status})`);
-
-                if(data.area !== undefined && data.area !== null) {
-                    document.getElementById('area').value = data.area;
-                } else {
-                    document.getElementById('area').value = '';
-                }
-
-                yearsData = data.yearsData || [];
-                const tbody = document.getElementById('priceTableBody');
-                tbody.innerHTML = '';
-                
-                if (yearsData.length === 0) {
-                    showMsg("查無地價資料，請自行填寫面積與地價。");
-                    yearsData.push({year: new Date().getFullYear()-1911, price: 0}); 
-                } else {
-                    showMsg("資料已成功帶入", false);
-                }
-
-                [...yearsData].forEach(item => {
-                    tbody.innerHTML += `<tr><td>${item.year}年</td>
-                        <td><input type="number" class="price-input" value="${item.price}" data-year="${item.year}" 
-                        style="width:130px; text-align:right; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-family:'JetBrains Mono', monospace;"></td></tr>`;
-                });
-                document.getElementById('priceCard').style.display = 'block';
-
-            } catch (e) { 
-                showMsg(e.message); 
-            } finally { 
-                btn.disabled = false; btn.innerText = "1. 讀取地價與面積"; 
-            }
-        }
-
-        // ==========================================
-        // 核心二：執行分段計算
-        // ==========================================
-        function calculateCompensation() {
-            try {
-                document.querySelectorAll('.price-input').forEach(input => {
-                    const y = parseInt(input.dataset.year);
-                    const p = parseFloat(input.value) || 0;
-                    const target = yearsData.find(d => d.year === y);
-                    if(target) target.price = p;
-                });
-
-                const area = parseFloat(document.getElementById('area').value);
-                if(isNaN(area) || area <= 0) throw new Error("請確認面積是否正確填寫 (需大於0)");
-
-                const rate = parseFloat(document.getElementById('feeRate').value) / 100;
-                if(isNaN(rate)) throw new Error("費率必須為數字");
-
-                const endDateStr = document.getElementById('endDate').value.trim();
-                let startDateStr = document.getElementById('startDate').value.trim();
-
-                const end = parseROC(endDateStr);
-                if(!end) throw new Error("迄日格式錯誤");
-
-                let start = parseROC(startDateStr);
-                
-                if(!start) { 
-                    start = new Date(end); 
-                    start.setFullYear(start.getFullYear() - 5); 
-                    start.setDate(start.getDate() + 1);
-                }
-                
-                if(start > end) throw new Error("起日不可大於迄日");
-
-                let totalAccumulated = 0;
-                let tempStart = new Date(start);
-                const detailBody = document.getElementById('detailTableBody');
-                detailBody.innerHTML = '';
-
-                while(tempStart <= end) {
-                    const currentYear = tempStart.getFullYear();
-                    const yearEnd = new Date(currentYear, 11, 31);
-                    const segEnd = yearEnd < end ? yearEnd : end;
-                    const days = Math.floor((segEnd - tempStart) / (1000*60*60*24)) + 1;
-                    const rocYear = currentYear - 1911;
-                    
-                    let lookupYear = (rocYear % 2 === 0) ? (rocYear - 1) : rocYear;
-                    
-                    const available = yearsData.filter(d => d.year <= lookupYear);
-                    const finalYear = available.length ? Math.max(...available.map(d => d.year)) : lookupYear;
-                    const priceVal = (yearsData.find(d => d.year === finalYear) || {price:0}).price;
-
-                    const subTotal = priceVal * area * rate * (days / 365);
-                    const subTotalCeil = Math.ceil(subTotal);
-                    totalAccumulated += subTotalCeil; 
-
-                    detailBody.innerHTML += `<tr>
-                        <td>${rocYear}年 (${fmtDate(tempStart)}~${fmtDate(segEnd)}) <br/><small style="color:#64748b; font-weight:500;">適用 ${finalYear} 年單價: ${priceVal}</small></td>
-                        <td class="number">${days} 天</td>
-                        <td class="number">NT$ ${subTotalCeil.toLocaleString()}</td></tr>`;
-
-                    tempStart = new Date(segEnd);
-                    tempStart.setDate(tempStart.getDate() + 1);
-                }
-
-                document.getElementById('finalTotal').innerText = `NT$ ${totalAccumulated.toLocaleString()}`;
-                document.getElementById('resultCard').style.display = 'block';
-                document.getElementById('resultCard').scrollIntoView({behavior: 'smooth'});
-
-            } catch (e) { 
-                showMsg(e.message); 
-            }
+            document.getElementById('finalAmt').innerText = `NT$ ${total.toLocaleString()}`;
+            document.getElementById('resZone').style.display = 'block';
+            window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
         }
 
         function parseROC(s) {
-            s = s.trim();
-            if(!s || s.length < 6 || s.length > 7) return null;
-            const yLen = s.length === 7 ? 3 : 2;
-            const y = parseInt(s.substring(0, yLen)) + 1911;
-            const m = parseInt(s.substring(yLen, yLen + 2)) - 1;
-            const d = parseInt(s.substring(yLen + 2));
-            return new Date(y, m, d);
+            if(!s || s.length < 6) return null;
+            const y = parseInt(s.slice(0,-4)) + 1911, m = parseInt(s.slice(-4,-2)) - 1, d = parseInt(s.slice(-2));
+            return new Date(y,m,d);
         }
-
-        function fmtDate(d) {
-            return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-        }
+        function fmt(d) { return `${d.getMonth()+1}/${d.getDate()}`; }
+        document.getElementById('city').onchange = init;
+        document.getElementById('district').onchange = loadSec;
+        window.onload = init;
     </script>
 </body>
 </html>
