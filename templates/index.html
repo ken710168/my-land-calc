@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>土地使用補償金計算機</title>
+    <title>土地使用補償金精算機</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -62,28 +62,44 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">地段名稱</label>
-                <select id="section" class="form-select" disabled>
-                    <option value="">請先選擇行政區</option>
-                </select>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">段名 (母地段)</label>
+                    <select id="section" class="form-select" disabled>
+                        <option value="">請先選擇行政區</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">小段 (子地段)</label>
+                    <select id="subSection" class="form-select" disabled>
+                        <option value="">無小段</option>
+                    </select>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">地號 (母號-子號)</label>
-                <div class="land-number-group">
-                    <input type="text" id="landMain" class="form-input" placeholder="0000" maxlength="4">
-                    <span>-</span>
-                    <input type="text" id="landSub" class="form-input" placeholder="0000" maxlength="4">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">地號 (母號-子號)</label>
+                    <div class="land-number-group">
+                        <input type="text" id="landMain" class="form-input" placeholder="0000" maxlength="4">
+                        <span>-</span>
+                        <input type="text" id="landSub" class="form-input" placeholder="0000" maxlength="4">
+                    </div>
+                    <div class="hint">系統自動補零。若無子號請留空</div>
                 </div>
-                <div class="hint">系統自動補零。若無子號請留空</div>
+                
+                <div class="form-group">
+                    <label class="form-label">土地面積 (m²)</label>
+                    <input type="number" id="area" class="form-input" placeholder="讀取後自動帶入" step="0.01">
+                    <div class="hint">可手動修改計算面積</div>
+                </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">起日 (選填)</label>
                     <input type="text" id="startDate" class="form-input" placeholder="例如: 1100101">
-                    <div class="hint">未填則由迄日回推5年</div>
+                    <div class="hint">未填則由迄日回推5年+1天</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">迄日 (必填)</label>
@@ -96,14 +112,14 @@
                 <input type="number" id="feeRate" class="form-input" value="5" step="0.1">
             </div>
 
-            <button onclick="fetchPrices()" id="fetchBtn" class="btn btn-primary">1. 讀取公告地價</button>
+            <button onclick="fetchPrices()" id="fetchBtn" class="btn btn-primary">1. 讀取地價與面積</button>
         </div>
 
         <div id="priceCard" class="card" style="display:none;">
             <div class="card-title">💰 公告地價確認</div>
             <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">註：偶數年計算時，系統將自動套用前一年度地價。</p>
             <table>
-                <thead><tr><th>公告地價年份</th><th style="text-align:right;">單價 (元)</th></tr></thead>
+                <thead><tr><th>公告地價年份</th><th style="text-align:right;">單價 (元/m²)</th></tr></thead>
                 <tbody id="priceTableBody"></tbody>
             </table>
             <button onclick="calculateCompensation()" class="btn btn-secondary">2. 執行分段計算</button>
@@ -123,14 +139,16 @@
     </div>
 
     <script>
-       const DISTRICTS = {
+        const DISTRICTS = {
             "新北市": ["淡水區", "三芝區", "石門區", "金山區", "萬里區", "瑞芳區", "平溪區", "雙溪區", "貢寮區"],
             "基隆市": ["七堵區"]
         };
 
         let yearsData = [];
 
-        // 初始化與連動
+        // ==========================================
+        // 初始化與選單連動
+        // ==========================================
         function initDistricts() {
             const city = document.getElementById('city').value;
             const distSelect = document.getElementById('district');
@@ -147,6 +165,7 @@
             const city = document.getElementById('city').value;
             const district = document.getElementById('district').value;
             let secSelect = document.getElementById('section');
+            let subSelect = document.getElementById('subSection');
             
             if (secSelect.tagName === 'INPUT') {
                 const newSelect = document.createElement('select');
@@ -157,6 +176,8 @@
 
             secSelect.innerHTML = '<option value="">載入中...</option>';
             secSelect.disabled = true;
+            subSelect.innerHTML = '<option value="">無小段</option>';
+            subSelect.disabled = true;
 
             try {
                 const res = await fetch('/api/get_sections', {
@@ -164,42 +185,79 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ city, district })
                 });
-                if (!res.ok) throw new Error('後端無回應');
                 const data = await res.json();
                 
-                secSelect.innerHTML = '<option value="">請選擇地段</option>';
+                secSelect.innerHTML = '<option value="">請選擇段名</option>';
                 if(data.sections && data.sections.length > 0) {
                     data.sections.forEach(s => {
                         const opt = document.createElement('option');
                         opt.value = s; opt.innerText = s;
                         secSelect.appendChild(opt);
                     });
+                    secSelect.disabled = false;
                 } else {
                     secSelect.innerHTML = '<option value="">此區查無地段</option>';
                 }
-                secSelect.disabled = false;
             } catch (e) { 
                 secSelect.outerHTML = `<input type="text" id="section" class="form-input" placeholder="連線異常，請手動輸入 (例如: 文化段)" required />`;
             }
         }
 
+        document.getElementById('section').addEventListener('change', async (e) => {
+            const city = document.getElementById('city').value;
+            const district = document.getElementById('district').value;
+            const section = e.target.value;
+            const subSelect = document.getElementById('subSection');
+
+            subSelect.innerHTML = '<option value="">載入中...</option>';
+            subSelect.disabled = true;
+
+            if (!section) {
+                subSelect.innerHTML = '<option value="">無小段</option>';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/get_subsections', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ city, district, section })
+                });
+                const data = await res.json();
+
+                subSelect.innerHTML = '<option value="">無小段</option>';
+                if(data.subSections && data.subSections.length > 0) {
+                    data.subSections.forEach(s => {
+                        const opt = document.createElement('option');
+                        opt.value = s; opt.innerText = s;
+                        subSelect.appendChild(opt);
+                    });
+                    subSelect.disabled = false;
+                }
+            } catch (e) {
+                subSelect.innerHTML = '<option value="">無小段</option>';
+            }
+        });
+
         document.getElementById('city').onchange = initDistricts;
         document.getElementById('district').onchange = updateSections;
         window.onload = initDistricts;
 
+        // 地號自動補零
         [document.getElementById('landMain'), document.getElementById('landSub')].forEach(el => {
             el.onblur = () => { if(el.value.trim()) el.value = el.value.trim().padStart(4, '0'); };
         });
 
         function showMsg(msg, isError = true) {
             const el = document.getElementById('globalAlert');
-            el.innerText = msg;
-            el.style.display = 'block';
+            el.innerText = msg; el.style.display = 'block';
             el.className = `alert ${isError ? 'alert-error' : 'alert-success'}`;
             setTimeout(() => el.style.display = 'none', 6000);
         }
 
-        // 1. 抓取地價
+        // ==========================================
+        // 核心一：讀取地價與面積 (API 對接)
+        // ==========================================
         async function fetchPrices() {
             document.getElementById('resultCard').style.display = 'none';
 
@@ -207,8 +265,9 @@
             const sub = document.getElementById('landSub').value.trim() || '0000';
             const endDate = document.getElementById('endDate').value.trim();
             const section = document.getElementById('section').value.trim();
+            const subSection = document.getElementById('subSection').value.trim();
 
-            if(!main || !endDate || !section) return showMsg("請填寫地號與迄日，並選擇地段");
+            if(!main || !endDate || !section) return showMsg("請填寫地號與迄日，並選擇段名");
             if(endDate.length < 6 || endDate.length > 7) return showMsg("迄日格式錯誤 (應為 6~7 碼)");
 
             const btn = document.getElementById('fetchBtn');
@@ -222,25 +281,34 @@
                         city: document.getElementById('city').value,
                         district: document.getElementById('district').value,
                         section: section,
+                        subSection: subSection,
                         landNumber: main.padStart(4, '0') + sub.padStart(4, '0'),
                         endDate: endDate
                     })
                 });
                 
-                if (!res.ok) throw new Error(`伺服器異常 (代碼: ${res.status})`);
                 const data = await res.json();
-                if(data.error) throw new Error(data.error);
+                
+                // 處理後端傳來的 error
+                if (data.error) throw new Error(data.error);
+                if (!res.ok) throw new Error(`伺服器異常 (代碼: ${res.status})`);
+
+                // 填入面積
+                if(data.area !== undefined && data.area !== null) {
+                    document.getElementById('area').value = data.area;
+                } else {
+                    document.getElementById('area').value = '';
+                }
 
                 yearsData = data.yearsData || [];
-                
                 const tbody = document.getElementById('priceTableBody');
                 tbody.innerHTML = '';
                 
                 if (yearsData.length === 0) {
-                    showMsg("查無地價資料，請確認輸入是否正確，或自行在下方新增。");
+                    showMsg("查無地價資料，請確認輸入是否正確，或自行填寫面積與地價。");
                     yearsData.push({year: new Date().getFullYear()-1911, price: 0}); 
                 } else {
-                    showMsg("公告地價已成功帶入", false);
+                    showMsg("資料已成功帶入", false);
                 }
 
                 [...yearsData].forEach(item => {
@@ -250,12 +318,19 @@
                 });
                 document.getElementById('priceCard').style.display = 'block';
 
-            } catch (e) { showMsg(e.message); } finally { btn.disabled = false; btn.innerText = "1. 讀取公告地價"; }
+            } catch (e) { 
+                showMsg(e.message); 
+            } finally { 
+                btn.disabled = false; btn.innerText = "1. 讀取地價與面積"; 
+            }
         }
 
-        // 2. 執行計算
+        // ==========================================
+        // 核心二：執行分段計算
+        // ==========================================
         function calculateCompensation() {
             try {
+                // 1. 同步使用者手動修改的價格
                 document.querySelectorAll('.price-input').forEach(input => {
                     const y = parseInt(input.dataset.year);
                     const p = parseFloat(input.value) || 0;
@@ -263,9 +338,14 @@
                     if(target) target.price = p;
                 });
 
+                // 2. 獲取面積與費率
+                const area = parseFloat(document.getElementById('area').value);
+                if(isNaN(area) || area <= 0) throw new Error("請確認面積是否正確填寫 (需大於0)");
+
                 const rate = parseFloat(document.getElementById('feeRate').value) / 100;
                 if(isNaN(rate)) throw new Error("費率必須為數字");
 
+                // 3. 處理日期
                 const endDateStr = document.getElementById('endDate').value.trim();
                 let startDateStr = document.getElementById('startDate').value.trim();
 
@@ -274,16 +354,16 @@
 
                 let start = parseROC(startDateStr);
                 
-                // --- 🚀 關鍵修正：回推 5 年再加 1 天 ---
+                // 起日空白：由迄日回推 5 年，再加 1 天
                 if(!start) { 
                     start = new Date(end); 
-                    start.setFullYear(start.getFullYear() - 5); // 扣 5 年
-                    start.setDate(start.getDate() + 1);         // 加 1 天
+                    start.setFullYear(start.getFullYear() - 5); 
+                    start.setDate(start.getDate() + 1);
                 }
-                // ----------------------------------------
                 
                 if(start > end) throw new Error("起日不可大於迄日");
 
+                // 4. 迴圈切割與計算
                 let totalAccumulated = 0;
                 let tempStart = new Date(start);
                 const detailBody = document.getElementById('detailTableBody');
@@ -296,32 +376,41 @@
                     const days = Math.floor((segEnd - tempStart) / (1000*60*60*24)) + 1;
                     const rocYear = currentYear - 1911;
                     
+                    // 偶數年自動往前回溯一年 (抓奇數年價格)
                     let lookupYear = (rocYear % 2 === 0) ? (rocYear - 1) : rocYear;
                     
                     const available = yearsData.filter(d => d.year <= lookupYear);
                     const finalYear = available.length ? Math.max(...available.map(d => d.year)) : lookupYear;
                     const priceVal = (yearsData.find(d => d.year === finalYear) || {price:0}).price;
 
-                    const subTotal = priceVal * rate * (days / 365);
-                    const subTotalCeil = Math.ceil(subTotal);
-                    totalAccumulated += subTotalCeil; 
+                    // 公式：單價 * 面積 * 費率 * (天數/365)
+                    const subTotal = priceVal * area * rate * (days / 365);
+                    const subTotalCeil = Math.ceil(subTotal); // 小計無條件進位
+                    totalAccumulated += subTotalCeil; // 加入總計
 
                     detailBody.innerHTML += `<tr>
                         <td>${rocYear}年 (${fmtDate(tempStart)}~${fmtDate(segEnd)}) <br/><small style="color:#64748b;">適用${finalYear}年單價</small></td>
                         <td class="number">${days}天</td>
                         <td class="number">NT$ ${subTotalCeil.toLocaleString()}</td></tr>`;
 
+                    // 將暫存日期推至下一段起日 (明年1月1日)
                     tempStart = new Date(segEnd);
                     tempStart.setDate(tempStart.getDate() + 1);
                 }
 
+                // 5. 輸出結果
                 document.getElementById('finalTotal').innerText = `NT$ ${totalAccumulated.toLocaleString()}`;
                 document.getElementById('resultCard').style.display = 'block';
                 document.getElementById('resultCard').scrollIntoView({behavior: 'smooth'});
 
-            } catch (e) { showMsg(e.message); }
+            } catch (e) { 
+                showMsg(e.message); 
+            }
         }
 
+        // ==========================================
+        // 工具函數
+        // ==========================================
         function parseROC(s) {
             s = s.trim();
             if(!s || s.length < 6 || s.length > 7) return null;
