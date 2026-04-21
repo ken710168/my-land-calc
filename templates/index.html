@@ -10,31 +10,31 @@
         body { font-family: 'Noto Sans TC', sans-serif; background: linear-gradient(135deg, #f0f4f8 0%, #e8f0f8 100%); color: #1a202c; min-height: 100vh; padding: 2rem 1rem; }
         .container { max-width: 800px; margin: 0 auto; }
         .header { text-align: center; margin-bottom: 2rem; }
-        .header h1 { font-size: 2rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; }
-        .card { backdrop-filter: blur(12px); background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 1rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); padding: 2rem; margin-bottom: 1.5rem; }
-        .card-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .header h1 { font-size: 2.2rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; letter-spacing: -1px; }
+        .card { backdrop-filter: blur(12px); background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 1rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); padding: 2rem; margin-bottom: 1.5rem; }
+        .card-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: #1e293b; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.8rem; }
         .form-group { margin-bottom: 1.2rem; }
         .form-label { display: block; font-size: 0.875rem; font-weight: 700; color: #475569; margin-bottom: 0.5rem; }
-        .form-input, .form-select { width: 100%; padding: 0.75rem; font-size: 1rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; background: #fff; transition: all 0.2s; }
-        .form-input:focus, .form-select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        .form-input, .form-select { width: 100%; padding: 0.75rem; font-size: 1rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; background: #fff; transition: all 0.2s; font-family: inherit; }
+        .form-input:focus, .form-select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .land-number-group { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.5rem; align-items: center; }
-        .hint { font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem; font-weight: 500; }
-        .btn { padding: 0.8rem; font-size: 1rem; font-weight: 700; border: none; border-radius: 0.5rem; cursor: pointer; transition: 0.2s; width: 100%; }
-        .btn-primary { background: #2563eb; color: white; }
-        .btn-primary:hover:not(:disabled) { background: #1d4ed8; transform: translateY(-1px); }
+        .hint { font-size: 0.75rem; color: #94a3b8; margin-top: 0.3rem; font-weight: 500; }
+        .btn { padding: 0.8rem; font-size: 1rem; font-weight: 700; border: none; border-radius: 0.5rem; cursor: pointer; transition: 0.2s; width: 100%; letter-spacing: 1px; }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2); }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3); }
         .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-        .btn-secondary { background: #10b981; color: white; margin-top: 1rem; }
-        .btn-secondary:hover:not(:disabled) { background: #059669; }
-        .alert { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 500; display: none; }
+        .btn-secondary { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; margin-top: 1rem; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); }
+        .btn-secondary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(16, 185, 129, 0.3); }
+        .alert { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 600; display: none; }
         .alert-error { background: #fef2f2; border: 1px solid #fee2e2; color: #991b1b; }
         .alert-success { background: #f0fdf4; border: 1px solid #dcfce7; color: #166534; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
-        th { background: #f8fafc; padding: 0.75rem; text-align: left; border-bottom: 2px solid #e2e8f0; }
-        td { padding: 0.75rem; border-bottom: 1px solid #f1f5f9; }
+        table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.9rem; }
+        th { background: #f8fafc; padding: 0.8rem; text-align: left; border-bottom: 2px solid #e2e8f0; color: #475569; }
+        td { padding: 0.8rem; border-bottom: 1px solid #f1f5f9; color: #334155; }
         .number { font-family: 'JetBrains Mono', monospace; text-align: right; }
-        .result-box { background: #10b981; color: white; padding: 1.5rem; border-radius: 0.75rem; text-align: center; margin-top: 1.5rem; }
-        .result-amount { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 800; }
+        .result-box { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 1.5rem; border-radius: 0.75rem; text-align: center; margin-top: 1.5rem; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2); }
+        .result-amount { font-family: 'JetBrains Mono', monospace; font-size: 2.5rem; font-weight: 800; margin-top: 0.5rem; color: #10b981; }
         @media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -85,11 +85,11 @@
                         <span>-</span>
                         <input type="text" id="landSub" class="form-input" placeholder="0000" maxlength="4">
                     </div>
-                    <div class="hint">系統自動補零。若無子號請留空</div>
+                    <div class="hint">未滿4碼自動補零。若無子號請留空</div>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">土地面積 (m²)</label>
+                    <label class="form-label">計算面積 (m²)</label>
                     <input type="number" id="area" class="form-input" placeholder="讀取後自動帶入" step="0.01">
                     <div class="hint">可手動修改計算面積</div>
                 </div>
@@ -99,7 +99,7 @@
                 <div class="form-group">
                     <label class="form-label">起日 (選填)</label>
                     <input type="text" id="startDate" class="form-input" placeholder="例如: 1100101">
-                    <div class="hint">未填則由迄日回推5年+1天</div>
+                    <div class="hint">未填則由迄日回推 5 年加 1 天</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">迄日 (必填)</label>
@@ -117,7 +117,7 @@
 
         <div id="priceCard" class="card" style="display:none;">
             <div class="card-title">💰 公告地價確認</div>
-            <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem;">註：偶數年計算時，系統將自動套用前一年度地價。</p>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem; line-height: 1.5;">註：若資料庫查無特定年份價格，可於下方手動補填。<br>偶數年計算時，系統將自動套用您填寫的前一奇數年地價。</p>
             <table>
                 <thead><tr><th>公告地價年份</th><th style="text-align:right;">單價 (元/m²)</th></tr></thead>
                 <tbody id="priceTableBody"></tbody>
@@ -128,11 +128,11 @@
         <div id="resultCard" class="card" style="display:none;">
             <div class="card-title">✅ 計算明細表</div>
             <table id="detailTable">
-                <thead><tr><th>年度區間</th><th>天數</th><th style="text-align:right;">小計</th></tr></thead>
+                <thead><tr><th>年度區間</th><th>天數</th><th style="text-align:right;">小計 (元)</th></tr></thead>
                 <tbody id="detailTableBody"></tbody>
             </table>
             <div class="result-box">
-                <div style="font-size: 0.9rem; opacity: 0.9;">補償金總計 (已執行無條件進位)</div>
+                <div style="font-size: 1rem; opacity: 0.9; font-weight: 500;">補償金總計 (已執行無條件進位)</div>
                 <div class="result-amount" id="finalTotal">NT$ 0</div>
             </div>
         </div>
@@ -256,7 +256,7 @@
         }
 
         // ==========================================
-        // 核心一：讀取地價與面積 (API 對接)
+        // 核心一：讀取地價與面積
         // ==========================================
         async function fetchPrices() {
             document.getElementById('resultCard').style.display = 'none';
@@ -289,11 +289,9 @@
                 
                 const data = await res.json();
                 
-                // 處理後端傳來的 error
                 if (data.error) throw new Error(data.error);
                 if (!res.ok) throw new Error(`伺服器異常 (代碼: ${res.status})`);
 
-                // 填入面積
                 if(data.area !== undefined && data.area !== null) {
                     document.getElementById('area').value = data.area;
                 } else {
@@ -305,7 +303,7 @@
                 tbody.innerHTML = '';
                 
                 if (yearsData.length === 0) {
-                    showMsg("查無地價資料，請確認輸入是否正確，或自行填寫面積與地價。");
+                    showMsg("查無地價資料，請自行填寫面積與地價。");
                     yearsData.push({year: new Date().getFullYear()-1911, price: 0}); 
                 } else {
                     showMsg("資料已成功帶入", false);
@@ -314,7 +312,7 @@
                 [...yearsData].forEach(item => {
                     tbody.innerHTML += `<tr><td>${item.year}年</td>
                         <td><input type="number" class="price-input" value="${item.price}" data-year="${item.year}" 
-                        style="width:120px; text-align:right; padding:6px; border:1px solid #cbd5e1; border-radius:4px;"></td></tr>`;
+                        style="width:130px; text-align:right; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-family:'JetBrains Mono', monospace;"></td></tr>`;
                 });
                 document.getElementById('priceCard').style.display = 'block';
 
@@ -330,7 +328,6 @@
         // ==========================================
         function calculateCompensation() {
             try {
-                // 1. 同步使用者手動修改的價格
                 document.querySelectorAll('.price-input').forEach(input => {
                     const y = parseInt(input.dataset.year);
                     const p = parseFloat(input.value) || 0;
@@ -338,14 +335,12 @@
                     if(target) target.price = p;
                 });
 
-                // 2. 獲取面積與費率
                 const area = parseFloat(document.getElementById('area').value);
                 if(isNaN(area) || area <= 0) throw new Error("請確認面積是否正確填寫 (需大於0)");
 
                 const rate = parseFloat(document.getElementById('feeRate').value) / 100;
                 if(isNaN(rate)) throw new Error("費率必須為數字");
 
-                // 3. 處理日期
                 const endDateStr = document.getElementById('endDate').value.trim();
                 let startDateStr = document.getElementById('startDate').value.trim();
 
@@ -354,7 +349,6 @@
 
                 let start = parseROC(startDateStr);
                 
-                // 起日空白：由迄日回推 5 年，再加 1 天
                 if(!start) { 
                     start = new Date(end); 
                     start.setFullYear(start.getFullYear() - 5); 
@@ -363,7 +357,6 @@
                 
                 if(start > end) throw new Error("起日不可大於迄日");
 
-                // 4. 迴圈切割與計算
                 let totalAccumulated = 0;
                 let tempStart = new Date(start);
                 const detailBody = document.getElementById('detailTableBody');
@@ -376,29 +369,25 @@
                     const days = Math.floor((segEnd - tempStart) / (1000*60*60*24)) + 1;
                     const rocYear = currentYear - 1911;
                     
-                    // 偶數年自動往前回溯一年 (抓奇數年價格)
                     let lookupYear = (rocYear % 2 === 0) ? (rocYear - 1) : rocYear;
                     
                     const available = yearsData.filter(d => d.year <= lookupYear);
                     const finalYear = available.length ? Math.max(...available.map(d => d.year)) : lookupYear;
                     const priceVal = (yearsData.find(d => d.year === finalYear) || {price:0}).price;
 
-                    // 公式：單價 * 面積 * 費率 * (天數/365)
                     const subTotal = priceVal * area * rate * (days / 365);
-                    const subTotalCeil = Math.ceil(subTotal); // 小計無條件進位
-                    totalAccumulated += subTotalCeil; // 加入總計
+                    const subTotalCeil = Math.ceil(subTotal);
+                    totalAccumulated += subTotalCeil; 
 
                     detailBody.innerHTML += `<tr>
-                        <td>${rocYear}年 (${fmtDate(tempStart)}~${fmtDate(segEnd)}) <br/><small style="color:#64748b;">適用${finalYear}年單價</small></td>
-                        <td class="number">${days}天</td>
+                        <td>${rocYear}年 (${fmtDate(tempStart)}~${fmtDate(segEnd)}) <br/><small style="color:#64748b; font-weight:500;">適用 ${finalYear} 年單價: ${priceVal}</small></td>
+                        <td class="number">${days} 天</td>
                         <td class="number">NT$ ${subTotalCeil.toLocaleString()}</td></tr>`;
 
-                    // 將暫存日期推至下一段起日 (明年1月1日)
                     tempStart = new Date(segEnd);
                     tempStart.setDate(tempStart.getDate() + 1);
                 }
 
-                // 5. 輸出結果
                 document.getElementById('finalTotal').innerText = `NT$ ${totalAccumulated.toLocaleString()}`;
                 document.getElementById('resultCard').style.display = 'block';
                 document.getElementById('resultCard').scrollIntoView({behavior: 'smooth'});
@@ -408,9 +397,6 @@
             }
         }
 
-        // ==========================================
-        // 工具函數
-        // ==========================================
         function parseROC(s) {
             s = s.trim();
             if(!s || s.length < 6 || s.length > 7) return null;
