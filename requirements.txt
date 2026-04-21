@@ -1,3 +1,4 @@
-Flask==3.0.0
-gunicorn==21.2.0
-flask-cors==5.0.0
+gunicorn
+requests
+Flask
+flask-cors
