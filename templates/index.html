@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>土地補償金精算機 - 多檔案同步版</title>
+    <title>土地使用補償金精算機</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <style>
         :root { --primary: #2563eb; --secondary: #10b981; --bg: #f8fafc; }
@@ -18,9 +18,10 @@
         .btn-s { background: var(--secondary); color: white; margin-top: 1.5rem; }
         .result-box { background: #0f172a; color: #10b981; padding: 1.5rem; border-radius: 0.75rem; text-align: center; margin-top: 2rem; }
         .amount { font-family: 'JetBrains Mono'; font-size: 2.2rem; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
         th, td { padding: 0.8rem; text-align: left; border-bottom: 1px solid #f1f5f9; }
-        th { background: #f8fafc; }
+        th { background: #f8fafc; color: #64748b; }
+        .p-edit { width: 100px; text-align: right; border: 1px solid #cbd5e1; padding: 4px; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -33,7 +34,7 @@
         </div>
 
         <div class="form-row">
-            <div><label>段名 (母地段)</label><select id="section" disabled><option value="">請先選擇行政區</option></select></div>
+            <div><label>段名 (母地段)</label><select id="section" disabled><option value="">讀取中...</option></select></div>
             <div><label>小段 (子地段)</label><select id="subSection" disabled><option value="">無小段</option></select></div>
         </div>
 
@@ -46,28 +47,28 @@
                     <input type="text" id="lSub" placeholder="0000" maxlength="4">
                 </div>
             </div>
-            <div><label>計算面積 (m²)</label><input type="number" id="area" step="0.01" placeholder="讀取後自動填入"></div>
+            <div><label>計算面積 (m²)</label><input type="number" id="area" step="0.01" placeholder="讀取後自動帶入"></div>
         </div>
 
         <div class="form-row">
-            <div><label>起日 (選填: 1100101)</label><input type="text" id="sDate"></div>
+            <div><label>起日 (格式: 1100101)</label><input type="text" id="sDate" placeholder="未填自動回推5年+1天"></div>
             <div><label>迄日 (必填: 1150101)</label><input type="text" id="eDate"></div>
         </div>
 
-        <button class="btn btn-p" onclick="fetchData()" id="btnF">1. 讀取公告地價與面積</button>
+        <button class="btn btn-p" onclick="fetchData()">1. 讀取公告地價與面積</button>
 
         <div id="priceZone" style="display:none; margin-top:2rem;">
-            <label>💰 公告地價確認 (可手動修改)</label>
+            <label>💰 歷年地價確認 (偶數年自動套用前一年價)</label>
             <table id="pTable"><thead><tr><th>年份</th><th>地價 (元/m²)</th></tr></thead><tbody></tbody></table>
             <button class="btn btn-s" onclick="calculate()">2. 執行分段計算</button>
         </div>
 
         <div id="resZone" style="display:none;">
             <div class="result-box">
-                <div style="font-size: 0.9rem; color: #94a3b8;">總補償金 (無條件進位)</div>
+                <div style="font-size: 0.9rem; color: #94a3b8;">總補償金 (小計進位後加總)</div>
                 <div class="amount" id="finalAmt">NT$ 0</div>
             </div>
-            <table id="dTable"><thead><tr><th>區間</th><th>天數</th><th>小計</th></tr></thead><tbody></tbody></table>
+            <table id="dTable"><thead><tr><th>區間</th><th>天數</th><th>適用單價</th><th>小計</th></tr></thead><tbody></tbody></table>
         </div>
     </div>
 
@@ -83,17 +84,35 @@
 
         async function loadSec() {
             const city = document.getElementById('city').value, dist = document.getElementById('district').value;
-            const s = document.getElementById('section'); s.disabled = true; s.innerHTML = '<option>讀取中...</option>';
+            const s = document.getElementById('section'), sub = document.getElementById('subSection');
+            s.disabled = true; s.innerHTML = '<option value="">讀取中...</option>';
+            sub.disabled = true; sub.innerHTML = '<option value="">無小段</option>';
             try {
                 const r = await fetch('/api/get_sections', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({city, district:dist})});
                 const d = await r.json();
-                s.innerHTML = d.sections.length ? d.sections.map(v => `<option value="${v}">${v}</option>`).join('') : '<option value="">查無地段</option>';
+                s.innerHTML = d.sections.length ? '<option value="">-- 請選擇段名 --</option>' + d.sections.map(v => `<option value="${v}">${v}</option>`).join('') : '<option value="">查無地段</option>';
                 s.disabled = false;
             } catch(e) { s.innerHTML = '<option>連線錯誤</option>'; }
         }
 
+        // 💡 監聽母地段切換，自動載入子地段
+        document.getElementById('section').onchange = async (e) => {
+            const sec = e.target.value; if(!sec) return;
+            const sub = document.getElementById('subSection');
+            sub.innerHTML = '<option>讀取中...</option>';
+            try {
+                const r = await fetch('/api/get_subsections', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+                    city: document.getElementById('city').value,
+                    district: document.getElementById('district').value,
+                    section: sec
+                })});
+                const d = await r.json();
+                sub.innerHTML = d.subSections.length ? d.subSections.map(v => `<option value="${v}">${v}</option>`).join('') : '<option value="">無小段</option>';
+                sub.disabled = d.subSections.length === 0;
+            } catch(e) { sub.innerHTML = '<option>錯誤</option>'; }
+        };
+
         async function fetchData() {
-            const btn = document.getElementById('btnF'); btn.innerText = "讀取中..."; btn.disabled = true;
             const payload = {
                 city: document.getElementById('city').value,
                 district: document.getElementById('district').value,
@@ -101,55 +120,46 @@
                 subSection: document.getElementById('subSection').value,
                 landNumber: document.getElementById('lMain').value.padStart(4,'0') + document.getElementById('lSub').value.padStart(4,'0')
             };
-            try {
-                const r = await fetch('/api/get_calc_data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-                const d = await r.json();
-                if(d.error) return alert(d.error);
-                document.getElementById('area').value = d.area || '';
-                yearsData = d.yearsData;
-                document.querySelector('#pTable tbody').innerHTML = yearsData.map(y => `<tr><td>${y.year}年</td><td><input type="number" class="p-edit" data-y="${y.year}" value="${y.price}"></td></tr>`).join('');
-                document.getElementById('priceZone').style.display = 'block';
-            } catch(e) { alert("讀取失敗"); } finally { btn.innerText = "1. 讀取公告地價與面積"; btn.disabled = false; }
+            const r = await fetch('/api/get_calc_data', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+            const d = await r.json();
+            if(d.error) return alert(d.error);
+            document.getElementById('area').value = d.area || '';
+            yearsData = d.yearsData;
+            document.querySelector('#pTable tbody').innerHTML = yearsData.map(y => `<tr><td>${y.year}年</td><td><input type="number" class="p-edit" data-y="${y.year}" value="${y.price}"></td></tr>`).join('');
+            document.getElementById('priceZone').style.display = 'block';
         }
 
         function calculate() {
-            // 更新手動調整的地價
+            // 同步修改後地價
             document.querySelectorAll('.p-edit').forEach(el => {
-                const target = yearsData.find(y => y.year == el.dataset.y);
-                if(target) target.price = parseFloat(el.value) || 0;
+                const t = yearsData.find(y => y.year == el.dataset.y);
+                if(t) t.price = parseFloat(el.value) || 0;
             });
 
-            const area = parseFloat(document.getElementById('area').value), eStr = document.getElementById('eDate').value;
-            let sStr = document.getElementById('sDate').value;
-            
-            const end = parseROC(eStr); if(!end) return alert("請填寫正確的迄日");
-            let start = parseROC(sStr);
+            const area = parseFloat(document.getElementById('area').value), end = parseROC(document.getElementById('eDate').value);
+            if(!end) return alert("請填寫迄日");
+            let start = parseROC(document.getElementById('sDate').value);
             if(!start) { start = new Date(end); start.setFullYear(start.getFullYear()-5); start.setDate(start.getDate()+1); }
             
             let total = 0, tempS = new Date(start);
             const tbody = document.querySelector('#dTable tbody'); tbody.innerHTML = '';
 
             while(tempS <= end) {
-                const curY = tempS.getFullYear(), yEnd = new Date(curY, 11, 31);
-                const segE = yEnd < end ? yEnd : end;
+                const curY = tempS.getFullYear(), yEnd = new Date(curY, 11, 31), segE = yEnd < end ? yEnd : end;
                 const days = Math.floor((segE - tempS)/(86400000)) + 1;
                 const rocY = curY - 1911;
 
-                // 核心邏輯：偶數年抓前一年地價
+                // 核心邏輯：偶數年回扣一年找價格
                 let lookY = (rocY % 2 === 0) ? (rocY - 1) : rocY;
-                const data = yearsData.find(y => y.year <= lookY);
-                const price = data ? data.price : 0;
-
-                const subTotal = Math.ceil(price * area * 0.05 * (days / 365));
+                const data = yearsData.find(y => y.year <= lookY) || {price: 0, year: '無資料'};
+                const subTotal = Math.ceil(data.price * area * 0.05 * (days / 365));
                 total += subTotal;
 
-                tbody.innerHTML += `<tr><td>${rocY}年 (${fmt(tempS)}~${fmt(segE)})<br><small>適用${data ? data.year : '?' }年價</small></td><td>${days}天</td><td>${subTotal.toLocaleString()}</td></tr>`;
+                tbody.innerHTML += `<tr><td>${rocY}年 (${fmt(tempS)}~${fmt(segE)})</td><td>${days}天</td><td>${data.price} (用${data.year}年)</td><td>${subTotal.toLocaleString()}</td></tr>`;
                 tempS = new Date(segE); tempS.setDate(tempS.getDate() + 1);
             }
-
             document.getElementById('finalAmt').innerText = `NT$ ${total.toLocaleString()}`;
             document.getElementById('resZone').style.display = 'block';
-            window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
         }
 
         function parseROC(s) {
@@ -158,6 +168,11 @@
             return new Date(y,m,d);
         }
         function fmt(d) { return `${d.getMonth()+1}/${d.getDate()}`; }
+        
+        [document.getElementById('lMain'), document.getElementById('lSub')].forEach(el => {
+            el.onblur = () => { if(el.value.trim()) el.value = el.value.trim().padStart(4, '0'); };
+        });
+        
         document.getElementById('city').onchange = init;
         document.getElementById('district').onchange = loadSec;
         window.onload = init;
