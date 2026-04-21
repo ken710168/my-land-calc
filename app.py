@@ -2,11 +2,13 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import sqlite3
 import os
-import requests
+import gdown
 
 app = Flask(__name__)
+# 允許跨網域請求
 CORS(app)
 
+# 設定絕對路徑
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "land_data.db")
 
@@ -14,71 +16,58 @@ DB_PATH = os.path.join(BASE_DIR, "land_data.db")
 FILE_ID = "1_fgR7PPXrtcaFhe9baK_tdqx7Cp0KtK5"
 
 # ==========================================
-# Google Drive 下載（支援大檔）
+# Google Drive 終極保證下載機制 (使用 gdown)
 # ==========================================
 def download_db():
+    # 檢查檔案是否存在且大於 500KB，避免抓到 Google 的 HTML 警告網頁
     if os.path.exists(DB_PATH):
-        return
+        if os.path.getsize(DB_PATH) > 500000: 
+            return
+        else:
+            print("🗑️ 發現容量異常的假檔案，強制刪除重載...")
+            os.remove(DB_PATH)
 
-    print("📥 開始下載 DB...")
-
-    session = requests.Session()
-    URL = "https://drive.google.com/uc?export=download"
-
-    response = session.get(URL, params={"id": FILE_ID}, stream=True)
-
-    def get_confirm_token(res):
-        for key, value in res.cookies.items():
-            if key.startswith('download_warning'):
-                return value
-        return None
-
-    token = get_confirm_token(response)
-
-    if token:
-        response = session.get(URL, params={
-            "id": FILE_ID,
-            "confirm": token
-        }, stream=True)
-
-    with open(DB_PATH, "wb") as f:
-        for chunk in response.iter_content(8192):
-            if chunk:
-                f.write(chunk)
-
-    print("✅ DB 下載完成")
+    print("📥 使用 gdown 開始下載真實 DB 檔...")
+    url = f'https://drive.google.com/uc?id={FILE_ID}'
+    
+    try:
+        gdown.download(url, DB_PATH, quiet=False, fuzzy=True)
+        print("✅ DB 真實原始檔下載完成！")
+    except Exception as e:
+        print(f"❌ gdown 下載失敗: {e}")
 
 download_db()
 
 # ==========================================
-# DB 連線（優化）
+# DB 連線（啟用 WAL 高效能模式）
 # ==========================================
 def get_conn():
     conn = sqlite3.connect(DB_PATH, timeout=10)
-    # 啟用 WAL 模式，大幅提升併發讀取效能
-    conn.execute("PRAGMA journal_mode=WAL;")
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+    except Exception as e:
+        print("❌ 資料庫格式錯誤，請確認檔案是否正確。")
+        raise e
     return conn
 
 def get_json():
     return request.get_json(silent=True) or {}
 
 def success(data):
-    # 配合前端期望的扁平化 JSON 結構，不額外包裝 {"data": ...}
     return jsonify(data)
 
 def error(msg, code=400):
-    # 配合前端的 if (data.error) 攔截機制
     return jsonify({"error": msg}), code
 
 # ==========================================
-# 頁面
+# 網頁路由 (首頁)
 # ==========================================
 @app.route('/')
 def index():
     return render_template('index.html')
 
 # ==========================================
-# API 1: 取得段名
+# API 1: 取得段名 (母地段)
 # ==========================================
 @app.route('/api/get_sections', methods=['POST'])
 def get_sections():
@@ -89,10 +78,10 @@ def get_sections():
     if not city or not dist:
         return error("缺少 city 或 district")
 
+    conn = None
     try:
         conn = get_conn()
         cursor = conn.cursor()
-
         cursor.execute("""
             SELECT DISTINCT section FROM prices
             WHERE city=? AND district=?
@@ -101,16 +90,16 @@ def get_sections():
         """, (city, dist))
 
         sections = [row[0] for row in cursor.fetchall()]
-
         return success({"sections": sections})
 
     except Exception as e:
         return error(str(e), 500)
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 # ==========================================
-# API 1.5: 子地段
+# API 1.5: 取得小段名 (子地段)
 # ==========================================
 @app.route('/api/get_subsections', methods=['POST'])
 def get_subsections():
@@ -122,10 +111,10 @@ def get_subsections():
     if not all([city, dist, sec]):
         return error("缺少參數")
 
+    conn = None
     try:
         conn = get_conn()
         cursor = conn.cursor()
-
         cursor.execute("""
             SELECT DISTINCT sub_section FROM prices
             WHERE city=? AND district=? AND section=?
@@ -133,21 +122,20 @@ def get_subsections():
             ORDER BY sub_section
         """, (city, dist, sec))
 
-        # 修正變數名稱以符合前端期待的 CamelCase
         sub_sections = [
             row[0] for row in cursor.fetchall()
             if isinstance(row[0], str) and row[0].strip()
         ]
-
         return success({"subSections": sub_sections})
 
     except Exception as e:
         return error(str(e), 500)
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 # ==========================================
-# API 2: 查地價
+# API 2: 取得地價與面積
 # ==========================================
 @app.route('/api/get_calc_data', methods=['POST'])
 def get_calc_data():
@@ -156,7 +144,6 @@ def get_calc_data():
     city = data.get('city')
     dist = data.get('district')
     section = data.get('section')
-    # 修正空值邏輯：如果前端傳來 ""，就保持 ""，不要轉成 None
     sub_section = data.get('subSection', '').strip() 
     land_number = data.get('landNumber')
 
@@ -164,18 +151,16 @@ def get_calc_data():
         return error("缺少必要查詢參數")
 
     clean_land = str(land_number).replace('-', '').replace(' ', '')
-
     if not clean_land.isdigit() or len(clean_land) != 8:
         return error("地號格式錯誤 (必須為8碼數字)")
 
     q_main = clean_land[:4]
     q_sub = clean_land[4:]
 
+    conn = None
     try:
         conn = get_conn()
         cursor = conn.cursor()
-
-        # 修正 SQL：直接精準比對 sub_section (包含空字串的情況)
         cursor.execute("""
             SELECT year, price, area FROM prices
             WHERE city=? AND district=? AND section=? AND sub_section=?
@@ -189,12 +174,7 @@ def get_calc_data():
             return success({"yearsData": [], "area": 0})
 
         area = rows[0][2] if len(rows[0]) > 2 else 0
-        
-        # 修正變數名稱以符合前端期待的 CamelCase
-        years_data = [
-            {"year": int(r[0]), "price": float(r[1] or 0)}
-            for r in rows
-        ]
+        years_data = [{"year": int(r[0]), "price": float(r[1] or 0)} for r in rows]
 
         return success({
             "yearsData": years_data,
@@ -204,7 +184,8 @@ def get_calc_data():
     except Exception as e:
         return error(str(e), 500)
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 # ==========================================
 # 健康檢查
@@ -213,9 +194,6 @@ def get_calc_data():
 def health():
     return {"status": "ok"}
 
-# ==========================================
-# 啟動
-# ==========================================
 if __name__ == '__main__':
-    # 關閉 reloader 避免在雲端重複觸發 Google Drive 下載
+    # 關閉 reloader 避免重複下載
     app.run(debug=True, use_reloader=False)
