@@ -6,6 +6,7 @@ import gdown
 import pandas as pd
 import glob
 import shutil
+import gc  # 記憶體回收套件
 
 app = Flask(__name__)
 CORS(app)
@@ -14,18 +15,18 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "land_data.db")
 TEMP_FOLDER = os.path.join(BASE_DIR, "drive_data_temp")
 
-# 🔥 Google Drive 資料夾 ID
+# 🔥 你的 Google Drive 資料夾 ID
 FOLDER_ID = "1PnX-VjKsMGwWWLpcSLfQEd30FJ2f5Ln2"
 
+# ==========================================
+# Google Drive 低記憶體消耗轉換引擎 (分塊寫入版)
+# ==========================================
 def setup_database_from_drive():
-    """從 Google Drive 下載資料夾內所有 CSV 並清洗、轉換為 SQLite"""
-    # 建立或清空暫存區
     if os.path.exists(TEMP_FOLDER): shutil.rmtree(TEMP_FOLDER)
     os.makedirs(TEMP_FOLDER)
 
     try:
         print(f"📂 同步雲端資料夾: {FOLDER_ID}")
-        # 下載整個資料夾
         gdown.download_folder(id=FOLDER_ID, output=TEMP_FOLDER, quiet=False, use_cookies=False)
         
         csv_files = glob.glob(os.path.join(TEMP_FOLDER, "**", "*.csv"), recursive=True)
@@ -33,56 +34,69 @@ def setup_database_from_drive():
             print("⚠️ 警告：資料夾內查無 CSV 檔案")
             return
 
-        df_list = []
+        conn = sqlite3.connect(DB_PATH)
+        is_first_chunk = True
+
         for file in csv_files:
+            print(f"⏳ 處理檔案: {os.path.basename(file)}")
             try:
-                # 讀取 CSV 並執行「淨水器」清洗
-                df = pd.read_csv(file, dtype=str)
-                df.columns = df.columns.str.strip() # 清除標題空白
-                df = df.map(lambda x: x.strip() if isinstance(x, str) else x) # 清除內容空白
-                df_list.append(df)
-                print(f"✅ 已讀取並清洗: {os.path.basename(file)}")
+                # 分塊讀取，每次只處理 10,000 筆，防止記憶體爆掉 (OOM)
+                chunk_iterator = pd.read_csv(file, dtype=str, chunksize=10000)
+                
+                for chunk in chunk_iterator:
+                    # 💡 淨水器：清除標題列與內容的隱形空白
+                    chunk.columns = chunk.columns.str.strip() 
+                    chunk = chunk.map(lambda x: x.strip() if isinstance(x, str) else x)
+                    
+                    # 💡 防呆補正：如果 CSV 忘記寫這些欄位，系統自動補上
+                    if 'area' not in chunk.columns: chunk['area'] = 0
+                    if 'sub_section' not in chunk.columns: chunk['sub_section'] = ''
+                    chunk.fillna('', inplace=True)
+                    
+                    # 寫入 SQLite (第一批建立資料表，後續用附加)
+                    mode = 'replace' if is_first_chunk else 'append'
+                    chunk.to_sql('prices', conn, if_exists=mode, index=False)
+                    is_first_chunk = False
+
+                    # 強制清空記憶體
+                    del chunk
+                    gc.collect()
+
+                print(f"✅ 已成功轉入: {os.path.basename(file)}")
             except Exception as e:
                 print(f"❌ 讀取失敗 {file}: {e}")
 
-        if df_list:
-            combined_df = pd.concat(df_list, ignore_index=True)
-            
-            # 💡 欄位補正：若缺少 area 欄位則自動補 0
-            if 'area' not in combined_df.columns:
-                combined_df['area'] = 0
-            
-            # 💡 欄位補正：若缺少 sub_section 欄位則自動補空字串
-            if 'sub_section' not in combined_df.columns:
-                combined_df['sub_section'] = ''
-
-            combined_df.fillna('', inplace=True)
-            
-            # 轉換為 SQLite 儲存
-            conn = sqlite3.connect(DB_PATH)
-            combined_df.to_sql('prices', conn, if_exists='replace', index=False)
-            conn.close()
-            print("🚀 資料庫轉換完成，WAL 模式啟動。")
-        
+        conn.close()
         shutil.rmtree(TEMP_FOLDER)
+        print("🚀 資料庫分塊轉換完成，完全避開 OOM 風險！")
+        
     except Exception as e:
         print(f"💥 啟動同步失敗: {e}")
 
-# 伺服器啟動時同步
+# 伺服器啟動時自動同步
 setup_database_from_drive()
 
+# ==========================================
+# 資料庫連線工具
+# ==========================================
 def get_conn():
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.execute("PRAGMA journal_mode=WAL;")
     return conn
 
+def get_json():
+    return request.get_json(silent=True) or {}
+
+# ==========================================
+# 頁面與 API 路由
+# ==========================================
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/api/get_sections', methods=['POST'])
 def get_sections():
-    data = request.get_json() or {}
+    data = get_json()
     city, dist = data.get('city'), data.get('district')
     conn = None
     try:
@@ -97,13 +111,12 @@ def get_sections():
 
 @app.route('/api/get_subsections', methods=['POST'])
 def get_subsections():
-    data = request.get_json() or {}
+    data = get_json()
     city, dist, sec = data.get('city'), data.get('district'), data.get('section')
     conn = None
     try:
         conn = get_conn()
         cursor = conn.cursor()
-        # 修正欄位名稱與查詢邏輯
         cursor.execute("SELECT DISTINCT sub_section FROM prices WHERE city=? AND district=? AND section=? AND sub_section!='' ORDER BY sub_section", (city, dist, sec))
         return jsonify({"subSections": [r[0] for r in cursor.fetchall()]})
     except Exception as e:
@@ -113,7 +126,7 @@ def get_subsections():
 
 @app.route('/api/get_calc_data', methods=['POST'])
 def get_calc_data():
-    data = request.get_json() or {}
+    data = get_json()
     city, dist, sec = data.get('city'), data.get('district'), data.get('section')
     sub_sec = data.get('subSection', '').strip()
     land_num = data.get('landNumber', '').replace('-', '')
