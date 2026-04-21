@@ -18,42 +18,57 @@ TEMP_FOLDER = os.path.join(BASE_DIR, "drive_data_temp")
 FOLDER_ID = "1PnX-VjKsMGwWWLpcSLfQEd30FJ2f5Ln2"
 
 def setup_database_from_drive():
-    """從 Google Drive 下載 CSV 並轉換為高效能 SQLite 資料庫"""
+    """從 Google Drive 下載資料夾內所有 CSV 並清洗、轉換為 SQLite"""
+    # 建立或清空暫存區
     if os.path.exists(TEMP_FOLDER): shutil.rmtree(TEMP_FOLDER)
     os.makedirs(TEMP_FOLDER)
 
     try:
-        # 下載資料夾
+        print(f"📂 同步雲端資料夾: {FOLDER_ID}")
+        # 下載整個資料夾
         gdown.download_folder(id=FOLDER_ID, output=TEMP_FOLDER, quiet=False, use_cookies=False)
-        csv_files = glob.glob(os.path.join(TEMP_FOLDER, "**", "*.csv"), recursive=True)
         
-        if not csv_files: return
+        csv_files = glob.glob(os.path.join(TEMP_FOLDER, "**", "*.csv"), recursive=True)
+        if not csv_files:
+            print("⚠️ 警告：資料夾內查無 CSV 檔案")
+            return
 
         df_list = []
         for file in csv_files:
             try:
-                # 讀取並清洗欄位
+                # 讀取 CSV 並執行「淨水器」清洗
                 df = pd.read_csv(file, dtype=str)
                 df.columns = df.columns.str.strip() # 清除標題空白
-                df = df.map(lambda x: x.strip() if isinstance(x, str) else x) # 清除資料空白
+                df = df.map(lambda x: x.strip() if isinstance(x, str) else x) # 清除內容空白
                 df_list.append(df)
+                print(f"✅ 已讀取並清洗: {os.path.basename(file)}")
             except Exception as e:
-                print(f"跳過錯誤檔案 {file}: {e}")
+                print(f"❌ 讀取失敗 {file}: {e}")
 
         if df_list:
             combined_df = pd.concat(df_list, ignore_index=True)
+            
+            # 💡 欄位補正：若缺少 area 欄位則自動補 0
+            if 'area' not in combined_df.columns:
+                combined_df['area'] = 0
+            
+            # 💡 欄位補正：若缺少 sub_section 欄位則自動補空字串
+            if 'sub_section' not in combined_df.columns:
+                combined_df['sub_section'] = ''
+
             combined_df.fillna('', inplace=True)
             
-            # 轉換為 SQLite
+            # 轉換為 SQLite 儲存
             conn = sqlite3.connect(DB_PATH)
             combined_df.to_sql('prices', conn, if_exists='replace', index=False)
             conn.close()
+            print("🚀 資料庫轉換完成，WAL 模式啟動。")
         
         shutil.rmtree(TEMP_FOLDER)
     except Exception as e:
-        print(f"資料庫建立失敗: {e}")
+        print(f"💥 啟動同步失敗: {e}")
 
-# 啟動時同步
+# 伺服器啟動時同步
 setup_database_from_drive()
 
 def get_conn():
@@ -88,6 +103,7 @@ def get_subsections():
     try:
         conn = get_conn()
         cursor = conn.cursor()
+        # 修正欄位名稱與查詢邏輯
         cursor.execute("SELECT DISTINCT sub_section FROM prices WHERE city=? AND district=? AND section=? AND sub_section!='' ORDER BY sub_section", (city, dist, sec))
         return jsonify({"subSections": [r[0] for r in cursor.fetchall()]})
     except Exception as e:
@@ -102,7 +118,7 @@ def get_calc_data():
     sub_sec = data.get('subSection', '').strip()
     land_num = data.get('landNumber', '').replace('-', '')
     
-    if len(land_num) != 8: return jsonify({"error": "地號需為8碼"}), 400
+    if len(land_num) != 8: return jsonify({"error": "地號需為 8 碼數字"}), 400
     q_m, q_s = land_num[:4], land_num[4:]
     qm_i, qs_i = str(int(q_m)), str(int(q_s))
 
@@ -110,7 +126,7 @@ def get_calc_data():
     try:
         conn = get_conn()
         cursor = conn.cursor()
-        # SQL 防呆：處理 sub_section 為空字串或 NULL 的情況
+        # 同時比對補零與不補零的地號格式
         cursor.execute("""
             SELECT year, price, area FROM prices 
             WHERE city=? AND district=? AND section=? AND (sub_section=? OR (sub_section='' AND ?=''))
