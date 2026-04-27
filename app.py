@@ -2,63 +2,73 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import sqlite3
 import os
-import gdown
 import pandas as pd
 import glob
 import shutil
-import gc  # 記憶體回收套件
+import gc
+import zipfile  # 💡 新增：用來解壓縮本機端的 ZIP 檔
 
 app = Flask(__name__)
 CORS(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "land_data.db")
-TEMP_FOLDER = os.path.join(BASE_DIR, "drive_data_temp")
-
-# 🔥 你的 Google Drive 資料夾 ID
-FOLDER_ID = "1PnX-VjKsMGwWWLpcSLfQEd30FJ2f5Ln2"
+ZIP_PATH = os.path.join(BASE_DIR, "land_data.zip")  # 💡 指向你上傳的 ZIP 檔
+TEMP_FOLDER = os.path.join(BASE_DIR, "zip_extracted_temp")
 
 # ==========================================
-# Google Drive 低記憶體消耗轉換引擎 (分塊寫入版)
+# 本機 ZIP 解壓縮與低記憶體轉換引擎
 # ==========================================
-def setup_database_from_drive():
+def setup_database_from_zip():
+    # 如果已經轉換過資料庫，就不重複執行，加快啟動速度
+    if os.path.exists(DB_PATH) and os.path.getsize(DB_PATH) > 10000:
+        print("✅ 資料庫已存在，跳過重建。")
+        return
+
+    if not os.path.exists(ZIP_PATH):
+        print(f"⚠️ 找不到檔案: {ZIP_PATH}，請確認 land_data.zip 已上傳。")
+        return
+
+    # 建立或清空暫存解壓縮區
     if os.path.exists(TEMP_FOLDER): shutil.rmtree(TEMP_FOLDER)
     os.makedirs(TEMP_FOLDER)
 
     try:
-        print(f"📂 同步雲端資料夾: {FOLDER_ID}")
-        gdown.download_folder(id=FOLDER_ID, output=TEMP_FOLDER, quiet=False, use_cookies=False)
+        print(f"📦 開始解壓縮 {ZIP_PATH} ...")
+        # 1. 解壓縮 ZIP 檔
+        with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
+            zip_ref.extractall(TEMP_FOLDER)
         
+        # 2. 找出裡面所有的 CSV 檔案
         csv_files = glob.glob(os.path.join(TEMP_FOLDER, "**", "*.csv"), recursive=True)
         if not csv_files:
-            print("⚠️ 警告：資料夾內查無 CSV 檔案")
+            print("⚠️ 警告：ZIP 檔案內查無 CSV 檔案！")
             return
 
         conn = sqlite3.connect(DB_PATH)
         is_first_chunk = True
 
+        # 3. 分塊讀取並寫入資料庫
         for file in csv_files:
             print(f"⏳ 處理檔案: {os.path.basename(file)}")
             try:
-                # 分塊讀取，每次只處理 10,000 筆，防止記憶體爆掉 (OOM)
                 chunk_iterator = pd.read_csv(file, dtype=str, chunksize=10000)
                 
                 for chunk in chunk_iterator:
-                    # 💡 淨水器：清除標題列與內容的隱形空白
+                    # 淨水器：清除隱形空白
                     chunk.columns = chunk.columns.str.strip() 
                     chunk = chunk.map(lambda x: x.strip() if isinstance(x, str) else x)
                     
-                    # 💡 防呆補正：如果 CSV 忘記寫這些欄位，系統自動補上
+                    # 防呆補正
                     if 'area' not in chunk.columns: chunk['area'] = 0
                     if 'sub_section' not in chunk.columns: chunk['sub_section'] = ''
                     chunk.fillna('', inplace=True)
                     
-                    # 寫入 SQLite (第一批建立資料表，後續用附加)
+                    # 寫入 SQLite
                     mode = 'replace' if is_first_chunk else 'append'
                     chunk.to_sql('prices', conn, if_exists=mode, index=False)
                     is_first_chunk = False
 
-                    # 強制清空記憶體
                     del chunk
                     gc.collect()
 
@@ -67,14 +77,15 @@ def setup_database_from_drive():
                 print(f"❌ 讀取失敗 {file}: {e}")
 
         conn.close()
+        # 4. 清理暫存解壓縮出來的檔案，節省伺服器空間
         shutil.rmtree(TEMP_FOLDER)
-        print("🚀 資料庫分塊轉換完成，完全避開 OOM 風險！")
+        print("🚀 ZIP 資料庫分塊轉換完成！")
         
     except Exception as e:
-        print(f"💥 啟動同步失敗: {e}")
+        print(f"💥 解壓縮或轉換失敗: {e}")
 
-# 伺服器啟動時自動同步
-setup_database_from_drive()
+# 伺服器啟動時執行轉換
+setup_database_from_zip()
 
 # ==========================================
 # 資料庫連線工具
@@ -88,7 +99,7 @@ def get_json():
     return request.get_json(silent=True) or {}
 
 # ==========================================
-# 頁面與 API 路由
+# 頁面與 API 路由 (邏輯完全不變)
 # ==========================================
 @app.route('/')
 def index():
@@ -139,7 +150,6 @@ def get_calc_data():
     try:
         conn = get_conn()
         cursor = conn.cursor()
-        # 同時比對補零與不補零的地號格式
         cursor.execute("""
             SELECT year, price, area FROM prices 
             WHERE city=? AND district=? AND section=? AND (sub_section=? OR (sub_section='' AND ?=''))
