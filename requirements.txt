@@ -1,6 +1,2 @@
-gunicorn
-requests
 Flask
 flask-cors
-gdown
-pandas
