@@ -22,14 +22,18 @@
         .btn-s:hover { background: #059669; transform: translateY(-2px); }
         .btn-e { background: var(--export); color: white; margin-top: 1.5rem; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2); }
         .btn-e:hover { background: #7c3aed; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139, 92, 246, 0.3); }
+        .btn-outline { background: transparent; border: 2px dashed #cbd5e1; color: #64748b; margin-top: 0.5rem; }
+        .btn-outline:hover { border-color: #94a3b8; color: #475569; background: #f8fafc; }
+        .delete-btn { color: #ef4444; background: #fee2e2; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem; }
+        .delete-btn:hover { background: #fecaca; }
         .result-box { background: #0f172a; color: #10b981; padding: 1.5rem; border-radius: 0.75rem; text-align: center; margin-top: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
         .amount { font-family: 'JetBrains Mono'; font-size: 2.2rem; font-weight: 800; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.85rem; }
         th, td { padding: 0.8rem; text-align: left; border-bottom: 1px solid #f1f5f9; }
         th { background: #f8fafc; color: #64748b; }
-        .p-edit { width: 100px; text-align: right; border: 1px solid #cbd5e1; padding: 4px; border-radius: 4px; font-family: 'JetBrains Mono'; }
         .hint { font-size: 0.75rem; color: #94a3b8; margin-top: 0.3rem; }
         .card-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; color: #1e293b; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.8rem; }
+        .alert-box { display: none; padding: 1rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 0.5rem; color: #b45309; margin-bottom: 1rem; font-size: 0.95rem; line-height: 1.5; }
     </style>
 </head>
 <body>
@@ -67,8 +71,19 @@
         </div>
 
         <div id="priceZone" class="card" style="display:none; margin-top:1.5rem;">
-            <div class="card-title">💰 歷年地價確認 (偶數年自動套用前一奇數年價)</div>
-            <table id="pTable"><thead><tr><th>年份</th><th>地價 (元/m²)</th></tr></thead><tbody></tbody></table>
+            <div class="card-title">💰 歷年地價確認</div>
+            
+            <div id="priceAlert" class="alert-box"></div>
+            
+            <p class="hint" style="margin-bottom: 0.5rem; color: #64748b;">註：偶數年自動套用前一奇數年價。若缺少特定年份，可手動新增。</p>
+            
+            <table id="pTable">
+                <thead><tr><th>年份</th><th>地價 (元/m²)</th><th style="text-align: right;">操作</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            
+            <button class="btn btn-outline" onclick="addPriceRow()">+ 新增地價年份</button>
+
             <button class="btn btn-s" onclick="calculate()">2. 執行分段計算</button>
         </div>
 
@@ -83,56 +98,23 @@
 
         <div id="exportZone" class="card" style="display:none; margin-top:1.5rem; border: 2px solid var(--export);">
             <div class="card-title" style="color: var(--export);">📄 產生 ODS 匯出檔</div>
-            
             <div class="form-row">
-                <div class="form-group">
-                    <label>公文文號 (對應：客戶編號)</label>
-                    <input type="text" id="exDocNum" placeholder="例如：新北地字第1130000001號">
-                </div>
-                <div class="form-group">
-                    <label>姓名</label>
-                    <input type="text" id="exName" placeholder="例如：王大明">
-                </div>
+                <div class="form-group"><label>公文文號 (對應：客戶編號)</label><input type="text" id="exDocNum" placeholder="例如：新北地字第1130000001號"></div>
+                <div class="form-group"><label>姓名</label><input type="text" id="exName" placeholder="例如：王大明"></div>
             </div>
-
             <div class="form-row">
-                <div class="form-group">
-                    <label>地址</label>
-                    <input type="text" id="exAddress" placeholder="輸入通訊地址">
-                </div>
-                <div class="form-group">
-                    <label>電子郵件 (非必填)</label>
-                    <input type="email" id="exEmail" placeholder="example@email.com">
-                </div>
+                <div class="form-group"><label>地址</label><input type="text" id="exAddress" placeholder="輸入通訊地址"></div>
+                <div class="form-group"><label>電子郵件 (非必填)</label><input type="email" id="exEmail" placeholder="example@email.com"></div>
             </div>
-
             <div class="form-row">
-                <div class="form-group">
-                    <label>公告欄 1 (預設帶入公式)</label>
-                    <input type="text" id="exB1">
-                </div>
-                <div class="form-group">
-                    <label>公告欄 2 (限12字以內)</label>
-                    <input type="text" id="exB2" maxlength="12" placeholder="選填">
-                </div>
+                <div class="form-group"><label>公告欄 1 (預設帶入公式)</label><input type="text" id="exB1"></div>
+                <div class="form-group"><label>公告欄 2 (限12字以內)</label><input type="text" id="exB2" maxlength="12" placeholder="選填"></div>
             </div>
-
             <div class="form-row">
-                <div class="form-group">
-                    <label>公告欄 3 (限12字以內)</label>
-                    <input type="text" id="exB3" maxlength="12" placeholder="選填">
-                </div>
-                <div class="form-group">
-                    <label>公告欄 4 (限12字以內)</label>
-                    <input type="text" id="exB4" maxlength="12" placeholder="選填">
-                </div>
+                <div class="form-group"><label>公告欄 3 (限12字以內)</label><input type="text" id="exB3" maxlength="12" placeholder="選填"></div>
+                <div class="form-group"><label>公告欄 4 (限12字以內)</label><input type="text" id="exB4" maxlength="12" placeholder="選填"></div>
             </div>
-
-            <div class="form-group">
-                <label>公告欄 5 (限12字以內)</label>
-                <input type="text" id="exB5" maxlength="12" placeholder="選填">
-            </div>
-
+            <div class="form-group"><label>公告欄 5 (限12字以內)</label><input type="text" id="exB5" maxlength="12" placeholder="選填"></div>
             <button class="btn btn-e" onclick="exportODS()">3. 下載 ODS 試算表</button>
         </div>
     </div>
@@ -140,7 +122,7 @@
     <script>
         const DISTS = {"新北市": ["淡水區", "三芝區", "石門區", "金山區", "萬里區", "瑞芳區", "平溪區", "雙溪區", "貢寮區"], "基隆市": ["七堵區"]};
         let yearsData = [];
-        let calculatedTotalAmt = 0; // 💡 儲存算好的補償金，供匯出使用
+        let calculatedTotalAmt = 0;
 
         function init() {
             const city = document.getElementById('city').value;
@@ -178,7 +160,6 @@
         };
 
         async function fetchData() {
-            // 隱藏後續區塊
             document.getElementById('resZone').style.display = 'none';
             document.getElementById('exportZone').style.display = 'none';
 
@@ -199,16 +180,73 @@
                 document.getElementById('area').value = '';
             }
 
-            yearsData = d.yearsData;
-            document.querySelector('#pTable tbody').innerHTML = yearsData.map(y => `<tr><td>${y.year}年</td><td><input type="number" class="p-edit" data-y="${y.year}" value="${y.price}"></td></tr>`).join('');
+            yearsData = d.yearsData || [];
+            const priceAlert = document.getElementById('priceAlert');
+
+            // 💡 查無資料時，跳出內政部網址，並預設給一個空行
+            if (yearsData.length === 0) {
+                priceAlert.innerHTML = `⚠️ 系統查無此地號的地價資料。請手動新增，或至 <a href="https://www.land.moi.gov.tw/chhtml/landvalue/42" target="_blank" style="color:#2563eb; text-decoration:underline; font-weight:bold;">內政部公告地價查詢系統</a> 查詢。`;
+                priceAlert.style.display = 'block';
+                
+                const curY = new Date().getFullYear() - 1911;
+                yearsData.push({ year: (curY % 2 === 0 ? curY - 1 : curY), price: 0 }); // 預設塞入最新奇數年
+            } else {
+                priceAlert.style.display = 'none';
+            }
+
+            renderPriceTable();
             document.getElementById('priceZone').style.display = 'block';
         }
 
-        function calculate() {
-            document.querySelectorAll('.p-edit').forEach(el => {
-                const t = yearsData.find(y => y.year == el.dataset.y);
-                if(t) t.price = parseFloat(el.value) || 0;
+        // ==========================================
+        // 💡 動態表格渲染與控制
+        // ==========================================
+        function renderPriceTable() {
+            const tbody = document.querySelector('#pTable tbody');
+            if (yearsData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#94a3b8; padding: 1rem;">目前無資料，請點擊下方按鈕新增。</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = yearsData.map((y, idx) => `
+                <tr>
+                    <td><input type="number" class="y-edit" value="${y.year}" style="width: 80px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-family: 'JetBrains Mono';"> 年</td>
+                    <td><input type="number" class="p-edit" value="${y.price}" style="width: 120px; text-align: right; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-family: 'JetBrains Mono';"></td>
+                    <td style="text-align: right;"><button class="delete-btn" onclick="removePriceRow(${idx})">刪除</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function syncPriceData() {
+            yearsData = [];
+            document.querySelectorAll('#pTable tbody tr').forEach(tr => {
+                const yInput = tr.querySelector('.y-edit');
+                const pInput = tr.querySelector('.p-edit');
+                if (yInput && pInput) {
+                    const y = parseInt(yInput.value) || 0;
+                    const p = parseFloat(pInput.value) || 0;
+                    if (y > 0) yearsData.push({ year: y, price: p });
+                }
             });
+            yearsData.sort((a, b) => b.year - a.year); // 確保年份由大到小排序
+        }
+
+        function addPriceRow() {
+            syncPriceData();
+            const lastYear = yearsData.length > 0 ? Math.min(...yearsData.map(d => d.year)) - 2 : new Date().getFullYear() - 1911;
+            yearsData.push({ year: lastYear > 0 ? lastYear : 110, price: 0 });
+            renderPriceTable();
+        }
+
+        function removePriceRow(idx) {
+            syncPriceData();
+            yearsData.splice(idx, 1);
+            renderPriceTable();
+        }
+
+        function calculate() {
+            syncPriceData(); // 計算前先同步使用者輸入的畫面資料
+
+            if (yearsData.length === 0) return alert("請至少輸入一個年份的地價資料");
 
             const area = parseFloat(document.getElementById('area').value);
             if(isNaN(area) || area <= 0) return alert("請確認面積是否正確填寫 (需大於0)");
@@ -236,7 +274,10 @@
                 const rocYear = curY - 1911;
 
                 let lookYear = (rocYear % 2 === 0) ? (rocYear - 1) : rocYear;
-                const priceData = yearsData.find(y => y.year <= lookYear) || {price: 0, year: '查無資料'};
+                
+                // 💡 尋找適用地價：如果找不到小於等於 lookYear 的資料，就抓我們有的「最舊的那一筆」
+                let priceData = yearsData.find(y => y.year <= lookYear);
+                if (!priceData) priceData = yearsData[yearsData.length - 1]; 
                 
                 const subTotal = Math.ceil(priceData.price * area * rate * (days / 365));
                 total += subTotal;
@@ -245,26 +286,17 @@
                 tempS = new Date(segE); tempS.setDate(tempS.getDate() + 1);
             }
             
-            // 💡 儲存總計，並顯示匯出表單
             calculatedTotalAmt = total;
             document.getElementById('finalAmt').innerText = `NT$ ${total.toLocaleString()}`;
             document.getElementById('resZone').style.display = 'block';
             
-            // 自動帶入公告欄1預設文字 (例如: 公告地價*面積*5%)
             document.getElementById('exB1').value = `公告地價*面積*${feeRateInput}%`;
             document.getElementById('exportZone').style.display = 'block';
 
-            // 往下捲動讓使用者看到表單
-            setTimeout(() => {
-                document.getElementById('exportZone').scrollIntoView({behavior: 'smooth', block: 'start'});
-            }, 100);
+            setTimeout(() => { document.getElementById('exportZone').scrollIntoView({behavior: 'smooth', block: 'start'}); }, 100);
         }
 
-        // ==========================================
-        // 💡 核心三：產出 ODS 檔案
-        // ==========================================
         function exportODS() {
-            // 取得使用者輸入的資料
             const docNum = document.getElementById('exDocNum').value.trim();
             const name = document.getElementById('exName').value.trim();
             const address = document.getElementById('exAddress').value.trim();
@@ -275,41 +307,19 @@
             const b4 = document.getElementById('exB4').value.trim();
             const b5 = document.getElementById('exB5').value.trim();
 
-            if(!docNum || !name || !address) {
-                alert("請至少填寫「公文文號」、「姓名」與「地址」以利建檔匯出。");
-                return;
-            }
+            if(!docNum || !name || !address) return alert("請至少填寫「公文文號」、「姓名」與「地址」。");
 
-            // 組合對應你截圖的表頭與資料
             const exportData = [{
-                "客戶編號": docNum,
-                "姓名": name,
-                "地址": address,
-                "電子郵件(非必填)": email,
-                "使用補償金": calculatedTotalAmt, // 帶入算好的總金額
-                "公告欄1": b1,
-                "公告欄2": b2,
-                "公告欄3": b3,
-                "公告欄4": b4,
-                "公告欄5": b5
+                "客戶編號": docNum, "姓名": name, "地址": address, "電子郵件(非必填)": email,
+                "使用補償金": calculatedTotalAmt, "公告欄1": b1, "公告欄2": b2, "公告欄3": b3, "公告欄4": b4, "公告欄5": b5
             }];
 
             try {
-                // 使用 SheetJS 將 JSON 轉換為試算表 Worksheet
                 const ws = XLSX.utils.json_to_sheet(exportData);
-                
-                // 建立新的 Workbook
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "補償金資料");
-
-                // 匯出為 ODS 檔案 (檔名自動加上姓名)
-                const fileName = `補償金資料_${name}.ods`;
-                XLSX.writeFile(wb, fileName);
-                
-            } catch (error) {
-                console.error(error);
-                alert("匯出失敗，請確認瀏覽器支援下載功能。");
-            }
+                XLSX.writeFile(wb, `補償金資料_${name}.ods`);
+            } catch (e) { alert("匯出失敗"); }
         }
 
         function parseROC(s) {
